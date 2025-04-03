@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 
 
 def begin_scraping(search_term):
-    base_url = f"{search_term}"
+    base_url = f"https://www.amazon.com/s?k={search_term}"
 
     try:
         response = requests.get(base_url)
