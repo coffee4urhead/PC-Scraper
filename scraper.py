@@ -1,39 +1,70 @@
+
 import requests
 import time
 from bs4 import BeautifulSoup
+import random
 
+def begin_scraping(search_term, max_pages=20):
+    current_page = 1
+    all_products = []
+    has_next_page = True
 
-def begin_scraping(search_term):
-    base_url = f"https://www.amazon.com/s?k={search_term}"
+    base_url = (
+        f"https://www.amazon.com/s?k={search_term.replace(' ', '+')}"
+        "&crid=32P9R4ODIWA9D"
+        "&sprefix=nvidia+rtx+30%2Caps%2C239"
+        "&ref=nb_sb_noss_2"
+    )
 
-    try:
-        response = requests.get(base_url)
-        if response.status_code == 200:
-            time.sleep(2)
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        "Accept-Language": "en-US,en;q=0.9",
+    }
 
+    while has_next_page and current_page <= max_pages:
+        print(f"Scraping page {current_page}...")
+        try:
+            url = f"{base_url}&page={current_page}"
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+
+            if "captcha" in response.text.lower():
+                print("CAPTCHA detected! Stopping scraping.")
+                break
+
+            time.sleep(2 + random.random())
             soup = BeautifulSoup(response.text, "html.parser")
 
-            price_tags = soup.find_all("span", class_="a-price")
+            next_button = soup.find('a', {'aria-label': f'Go to next page, page {current_page + 1}'})
+            has_next_page = bool(next_button)
 
-            if price_tags:
-                for price_tag in price_tags:
+            products = soup.find_all("div", {'data-component-type': 's-search-result'})
 
-                    symbol = price_tag.find("span", class_="a-price-symbol")
-                    whole = price_tag.find("span", class_="a-price-whole")
-                    decimal = price_tag.find("span", class_="a-price-decimal")
-                    fractional = price_tag.find("span", class_="a-price-symbol")
+            for product in products:
+                h2_caption = product.find("h2", attrs={'aria-label': True})
+                product_name = h2_caption.get('aria-label', 'N/A') if h2_caption else 'N/A'
 
-                    if symbol and whole and decimal and fractional:
-                        full_price = f"{symbol.get_text()}{whole.get_text()}{decimal.get_text()}{fractional.get_text()}"
-                        print("Price:", full_price)
-                    else:
-                        print("Price format is missing components.")
-            else:
-                print("No prices found on this page.")
-        else:
-            print(f"Failed to retrieve the page. Status code: {response.status_code}")
+                price = product.find("span", class_="a-price")
+                if price:
+                    symbol = price.find("span", class_="a-price-symbol")
+                    whole = price.find("span", class_="a-price-whole")
+                    fraction = price.find("span", class_="a-price-fraction")
+                    full_price = (
+                        f"{symbol.get_text() if symbol else ''}"
+                        f"{whole.get_text() if whole else ''}"
+                        f".{fraction.get_text() if fraction else ''}"
+                    )
+                else:
+                    full_price = "N/A"
 
-    except Exception as e:
-        print(f"An error occurred: {e}")
+                product_info = f"Page {current_page}: {product_name} | Price: {full_price}"
+                all_products.append(product_info)
+                print(product_info)
 
+        except Exception as e:
+            print(f"Error on page {current_page}: {e}")
+            break
 
+        current_page += 1
+
+    return all_products

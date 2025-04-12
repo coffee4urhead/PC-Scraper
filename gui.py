@@ -1,6 +1,7 @@
 import tkinter as tk
 from PIL import Image, ImageTk
 from scraper import begin_scraping
+import pygame
 
 root = tk.Tk()
 root.title("GUI App for Scraping General GPU Information")
@@ -36,8 +37,27 @@ submit_button = tk.Button(root, text="Submit", command=on_submit, width=7, font=
 submit_button_window = canvas.create_window(650, 180, anchor="center", window=submit_button)
 
 quit_button = tk.Button(root, text="Quit", command=root.destroy, width=7, font=("Comic Sans MS", 13, "bold"), height = 1, cursor="hand2", padx=10, pady=5)
-quit_button_window = canvas.create_window(750, 180, anchor="center", window=quit_button)
+quit_button_window = canvas.create_window(850, 180, anchor="center", window=quit_button)
+
+pygame.mixer.init()
+music_playing = False
+
+def toggle_music():
+    global music_playing
+    if not music_playing:
+        pygame.mixer.music.load("./Music/scraping-music.wav")
+        pygame.mixer.music.play()
+        play_music_button.config(text="Pause")
+        music_playing = True
+    else:
+        if pygame.mixer.music.get_busy():
+            pygame.mixer.music.pause()
+            play_music_button.config(text="Resume")
+        else:
+            pygame.mixer.music.unpause()
+            play_music_button.config(text="Pause")
+
+play_music_button = tk.Button(root, text="Play Music", command=toggle_music, width=7, font=("Comic Sans MS", 13, "bold"), height=1, cursor="hand2", padx=10, pady=5)
+play_button_window = canvas.create_window(750, 180, anchor="center", window=play_music_button)
 
 root.mainloop()
-
-
