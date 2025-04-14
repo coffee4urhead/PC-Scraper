@@ -4,7 +4,7 @@
     <content url="file://$MODULE_DIR$">
       <excludeFolder url="file://$MODULE_DIR$/vir-env" />
     </content>
-    <orderEntry type="jdk" jdkName="Python 3.12 (GPU-web-scraper)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 3.9 (Django migrations and admin exercise)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>
