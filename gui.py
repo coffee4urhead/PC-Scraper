@@ -3,6 +3,7 @@ from tkinter import ttk
 from PIL import Image, ImageTk
 from scraper import AmazonGPUScraper
 import pygame
+import TableMaker as tm
 
 
 class GUI:
@@ -15,6 +16,7 @@ class GUI:
         pygame.mixer.init()
         self.music_playing = False
         self._setup_gui()
+        self.all_products = []
         self.root.mainloop()
 
     def _setup_gui(self):
@@ -47,6 +49,14 @@ class GUI:
                                        height=1, cursor="hand2", padx=10, pady=5)
         canvas.create_window(650, 180, anchor="center", window=self.submit_button)
 
+        #combo box
+        options = ["Motherboard", 'PSU', 'RAM', 'GPU', 'Case', 'Fans', 'CPU', 'AIO', 'Air Coolers', 'Extension Cables', 'HDD', 'SATA SSD', 'NVME SSD']
+
+        self.combo_scrape_options = ttk.Combobox(self.root, width=20, font=("Comic Sans MS", 13, "bold"), values=options)
+        self.combo_scrape_options.current(3)
+        self.combo_scrape_options.bind("<<ComboboxSelected>>", self.on_selection)
+        canvas.create_window(1050, 120, anchor="center", window=self.combo_scrape_options)
+
         quit_button = tk.Button(self.root, text="Quit", command=self.root.destroy,
                                 width=7, font=("Comic Sans MS", 13, "bold"),
                                 height=1, cursor="hand2", padx=10, pady=5)
@@ -69,7 +79,7 @@ class GUI:
 
         # Add results text area with scrollbar
         results_frame = tk.Frame(self.root)
-        canvas.create_window(600, 450, anchor="center", window=results_frame,
+        canvas.create_window(600, 480, anchor="center", window=results_frame,
                              width=1000, height=400)
 
         self.results_text = tk.Text(results_frame, wrap=tk.WORD,
@@ -84,10 +94,14 @@ class GUI:
         # Configure text tags for styling
         self.results_text.tag_config('error', foreground='red')
 
+    def on_selection(self, event=None):
+        selected_value = self.combo_scrape_options.get()
+        print(f"Selected: {selected_value}")
+
     def _toggle_music(self):
         if not self.music_playing:
-            pygame.mixer.music.load("./Music/scraping-music.wav")
-            pygame.mixer.music.play()
+            pygame.mixer.music.load("./Music/scraping-faster.wav")
+            pygame.mixer.music.play(loops=-1)
             self.play_music_button.config(text="Pause")
             self.music_playing = True
         else:
@@ -120,10 +134,19 @@ class GUI:
             elif data['type'] == 'product':
                 # Add product to results display
                 product = data['data']
+                self.all_products.append(product)
+
                 display_text = (
                     f"GPU Found:\n"
                     f"• Title: {product['title']}\n"
                     f"• Price: {product.get('price', 'N/A')}\n"
+                    f"• URL: {product.get('url', 'N/A')}\n"
+                    f"• Brand: {product.get('brand', 'N/A')}\n"
+                    f"• GPU model: {product.get('gpu_model', 'N/A')}\n"
+                    f"• Graphics Coprocessor: {product.get('graphics_coprocessor', 'N/A')}\n"
+                    f"• Graphics Ram size: {product.get('graphics_ram_size', 'N/A')}\n"
+                    f"• GPU clock speed: {product.get('gpu_clock_speed', 'N/A')}\n"
+                    f"• Video Output resolution: {product.get('video_output_resolution', 'N/A')}\n"
                     f"• Page: {data.get('page', 'N/A')}\n"
                     f"{'-' * 50}\n"
                 )
@@ -150,6 +173,8 @@ class GUI:
                     text="Scraping completed successfully!",
                     foreground="green"
                 )
+
+                tm.TableMaker(data=self.all_products, website_scraped="Amazon.com", output_folder="Amazon web search")
                 self.progress_bar['value'] = 100
                 self.submit_button.config(state=tk.NORMAL)
 

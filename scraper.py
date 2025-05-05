@@ -32,6 +32,7 @@ class AmazonGPUScraper:
             'laptop', 'notebook', 'pc', 'computer', 'system',
             'prebuilt', 'desktop', 'all-in-one', 'mini pc'
         ]
+        self.cl_search_term = ""
 
     def _get_headers(self):
         return {
@@ -54,6 +55,7 @@ class AmazonGPUScraper:
 
     def _get_base_url(self, search_term):
         """Generate clean search URL without restrictive parameters"""
+        self.cl_search_term = search_term
         encoded_term = quote(search_term)
 
         return (
@@ -66,7 +68,7 @@ class AmazonGPUScraper:
         """Get all product links from a specific search results page URL"""
         product_links = []
         try:
-            time.sleep(1 + random.random())
+            time.sleep(random.uniform(2, 5))
             response = requests.get(page_url, headers=self._get_headers())
             response.raise_for_status()
 
@@ -89,7 +91,7 @@ class AmazonGPUScraper:
                 if link_tag and 'href' in link_tag.attrs:
                     full_url = urljoin('https://www.amazon.com', link_tag['href'])
                     clean_url = full_url.split('ref=')[0].split('?')[0]
-                    if '/dp/' in clean_url:
+                    if '/dp/' in clean_url and clean_url not in product_links:
                         product_links.append(clean_url)
 
             return product_links
@@ -99,37 +101,68 @@ class AmazonGPUScraper:
             return []
 
     def _get_product_details(self, product_url):
-        """Extract detailed information from a product page"""
+        """Extract detailed information from a product page and structure it for Excel output"""
         try:
             response = requests.get(product_url, headers=self._get_headers())
             response.raise_for_status()
             soup = BeautifulSoup(response.text, 'html.parser')
 
-            # Extract product title
             title = soup.find('span', {'id': 'productTitle'})
             title = title.get_text(strip=True) if title else "No Title"
 
-            # Extract price
             price_whole = soup.find('span', {'class': 'a-price-whole'})
             price_fraction = soup.find('span', {'class': 'a-price-fraction'})
             price = f"${price_whole.get_text(strip=True)}.{price_fraction.get_text(strip=True)}" if price_whole and price_fraction else "N/A"
 
-            # Extract technical details
-            tech_details = {}
-            tech_table = soup.find('table', {'id': 'productDetails_techSpec_section_1'})
-            if tech_table:
-                for row in tech_table.find_all('tr'):
-                    th = row.find('th')
-                    td = row.find('td')
-                    if th and td:
-                        tech_details[th.get_text(strip=True)] = td.get_text(strip=True)
-
-            return {
+            product_data = {
                 'title': title,
                 'price': price,
                 'url': product_url,
-                'technical_details': tech_details,
+                'brand': "N/A",
+                'gpu_model': "N/A",
+                'graphics_coprocessor': "N/A",
+                'graphics_ram_size': "N/A",
+                'gpu_clock_speed': "N/A",
+                'video_output_resolution': "N/A"
             }
+
+            tech_table = soup.find('table', {'class': 'a-normal a-spacing-micro'})
+            if tech_table:
+                for row in tech_table.find_all('tr'):
+                    tds = row.find_all('td')
+                    if len(tds) >= 2:
+                        label = tds[0].get_text(strip=True).lower()
+                        value = tds[1].get_text(strip=True)
+
+                        if 'brand' in label:
+                            product_data['brand'] = value
+                        elif 'model' in label:
+                            product_data['gpu_model'] = value
+                        elif 'coprocessor' in label or 'graphics processor' in label:
+                            product_data['graphics_coprocessor'] = value
+                        elif 'memory size' in label or 'ram size' in label or 'vram' in label:
+                            product_data['graphics_ram_size'] = value
+                        elif 'clock speed' in label or 'gpu speed' in label:
+                            product_data['gpu_clock_speed'] = value
+                        elif 'output' in label or 'interface' in label or 'resolution' in label:
+                            product_data['video_output_resolution'] = value
+
+            if product_data['brand'] == "N/A":
+                if 'nvidia' in title.lower():
+                    product_data['brand'] = "NVIDIA"
+                elif 'amd' in title.lower() or 'radeon' in title.lower():
+                    product_data['brand'] = "AMD"
+                elif 'asus' in title.lower():
+                    product_data['brand'] = "ASUS"
+                elif 'msi' in title.lower():
+                    product_data['brand'] = "MSI"
+
+            if product_data['gpu_model'] == "N/A":
+                model_match = re.search(r'(RTX \d{4}|RX \d{4}|GTX \d{4}|Radeon \w+)', title, re.IGNORECASE)
+                if model_match:
+                    product_data['gpu_model'] = model_match.group(0).upper()
+
+            return product_data
 
         except Exception as e:
             self._update_gui({'type': 'error', 'message': f"Product page error: {str(e)}"})
@@ -213,7 +246,7 @@ class AmazonGPUScraper:
                                 'page': page
                             })
 
-                    time.sleep(self.delay_between_requests * random.uniform(0.5, 1.5))
+                    time.sleep(self.delay_between_requests * random.uniform(2, 5))
 
                 time.sleep(self.delay_between_requests * 2)
 
