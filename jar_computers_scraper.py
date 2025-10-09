@@ -11,6 +11,7 @@ class JarComputersScraper(BaseScraper):
             "Лаптоп", 'Настолен компютър', 'HP Victus', 'Acer Predator Helios'
         ]
 
+
     def _get_base_url(self, search_term):
         """Generate clean search URL without restrictive parameters"""
         encoded_term = quote(search_term)

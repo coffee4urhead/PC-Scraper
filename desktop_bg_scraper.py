@@ -13,6 +13,7 @@ class DesktopScraper(BaseScraper):
             "Лаптоп", 'Настолен компютър', 'HP Victus', 'Acer Predator Helios'
         ]
 
+
     def _get_base_url(self, search_term):
         """Generate clean search URL without restrictive parameters"""
         encoded_term = quote(search_term)
@@ -66,7 +67,7 @@ class DesktopScraper(BaseScraper):
                 'price': price,
                 'url': product_url
             }
-            
+
             tech_table = soup.find('table', {'class': 'product-characteristics'})
             if tech_table:
                 for item in tech_table.find_all('tr'):

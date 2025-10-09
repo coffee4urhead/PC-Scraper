@@ -4,9 +4,10 @@ import os
 
 
 class TableMaker:
-    def __init__(self, data, website_scraped, output_folder, pc_part_selected):
+    def __init__(self, data, website_scraped, output_folder, pc_part_selected, currency_symbol=""):
         self.data = data
         self.website_scraped = website_scraped
+        self.currency_symbol = currency_symbol or "$"
         self.pc_part_selected = pc_part_selected
         os.makedirs(output_folder, exist_ok=True)
 
@@ -23,7 +24,12 @@ class TableMaker:
             'bold': True, 'font_color': 'white', 'bg_color': '#1F497D',
             'align': 'center', 'border': 1
         })
-        currency_format = workbook.add_format({'num_format': '$#,##0.00', 'align': 'right'})
+        
+        currency_format = workbook.add_format({
+            'num_format': f'"{self.currency_symbol}"#,##0.00',
+            'align': 'right'
+        })
+
 
         # Get all unique field names from all products
         all_fields = set()
@@ -46,14 +52,17 @@ class TableMaker:
             worksheet.write(row, 0, product.get("title", "N/A"))
 
             # Handle price formatting
-            price_str = str(product.get("price", "$0")).split("/")[0]
+            price_str = str(product.get("price", "0")).split("/")[0].strip()
+            for symbol in ["лв", "$", "€", "£", "¥", "₩", "R$", "₹"]:
+                price_str = price_str.replace(symbol, "")
+
+
             try:
                 price_num = float(price_str)
                 worksheet.write(row, 1, price_num, currency_format)
             except ValueError:
-                worksheet.write(row, 1, "N/A")
-
-            worksheet.write(row, 2, product.get("url", "N/A"))
+                worksheet.write(row, 1, str(product.get("price", "N/A"))) 
+                worksheet.write(row, 2, product.get("url", "N/A"))
 
             # Write dynamic columns
             for col, field in enumerate(dynamic_columns, start=3):

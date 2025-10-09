@@ -9,6 +9,8 @@ import string
 
 class BaseScraper(ABC):
     def __init__(self, gui_callback=None, driver=None):
+        self.currency_symbol = "лв"
+        self.currency_code = "BGN"
         self.gui_callback = gui_callback
         self.scraping_thread = None
         self.stop_event = threading.Event()

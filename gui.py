@@ -6,12 +6,14 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
+from dotenv import load_dotenv
 import os
 
 from ardes_scraper import ArdesScraper
 from jar_computers_scraper import JarComputersScraper
 from scraper import AmazonScraper
 from desktop_bg_scraper import DesktopScraper
+from currency_converter import convert_currency
 
 from windows.help_window import HelpWindow
 from windows.option_window import OptionsWindow
@@ -19,6 +21,10 @@ from windows.font_options_window import WindowsFontOptions
 
 import pygame
 import TableMaker as tm
+
+load_dotenv() 
+API_KEY = os.getenv("UNI_RATE_API_KEY")
+API_BASE_URL = os.getenv("BASE_URL")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 image_path = os.path.join(BASE_DIR, "images", "elf.jpg")
@@ -32,13 +38,13 @@ class GUI:
         self.root.title("GUI App for Scraping General PC Information")
         self.root.geometry("1200x700")
 
-        self.preferred_currency = "USD"
+        self.preferred_currency = "BGN"
         self.currency_format = "0.00"
-        self.currency_symbol = "$"
+        self.currency_symbol = "лв"
         self.preferred_language = "en-US"
         self.preferred_size = 12
         self.preferred_font = "Comic Sans MS"
-        self.save_folder = "/desktop"
+        self.save_folder = os.path.join(os.path.expanduser("~"), "Desktop")
         self.selected_pc_part = "GPU"
         pygame.mixer.init()
         self.music_playing = False
@@ -347,8 +353,31 @@ class GUI:
                     foreground="green"
                 )
 
-                print(self.all_products)
-                tm.TableMaker(data=self.all_products, website_scraped=self.selected_website, output_folder=self.save_folder, pc_part_selected=self.selected_pc_part)
+                for product in self.all_products:
+                    if 'price' in product and product['price'] != "N/A":
+                        try:
+                            price_str = str(product['price']).split('/')[0].strip()
+
+                            for symbol in ["лв", "$", "€", "£", "¥", "USD", "EUR", "BGN", "JPY"]:
+                                price_str = price_str.replace(symbol, "")
+
+                            price_str = price_str.replace(",", "").replace(" ", "")
+                            original_price = float(price_str)
+
+                            converted_price = convert_currency(
+                                original_price,
+                                'BGN',  
+                                self.preferred_currency
+                            )
+
+                            print(f"Converted {original_price} BGN to {converted_price} {self.preferred_currency}")
+                            formatted_price = f"{self.currency_symbol}{converted_price:.2f}"
+                            product['price'] = formatted_price
+                        except Exception as e:
+                            print(f"Currency conversion error for {product['title']}: {str(e)}")
+                            continue
+
+                tm.TableMaker(data=self.all_products, website_scraped=self.selected_website, output_folder=self.save_folder, pc_part_selected=self.selected_pc_part, currency_symbol=self.currency_symbol)
                 self.progress_bar['value'] = 100
                 self.submit_button.config(state=tk.NORMAL)
                 self.combo_scrape_options["state"] = tk.NORMAL
