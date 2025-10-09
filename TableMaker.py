@@ -2,129 +2,139 @@ import xlsxwriter
 from datetime import datetime
 import os
 
+
 class TableMaker:
-    def __init__(self, data, website_scraped, output_folder):
+    def __init__(self, data, website_scraped, output_folder, pc_part_selected):
         self.data = data
         self.website_scraped = website_scraped
-        # Create folder if it doesn't exist
+        self.pc_part_selected = pc_part_selected
         os.makedirs(output_folder, exist_ok=True)
 
-        # Define filename with folder path
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.filename = os.path.join(output_folder, f"GPU_Data_{timestamp}.xlsx")
-
+        self.filename = os.path.join(output_folder, f"{self.pc_part_selected}_Data_{timestamp}.xlsx")
         self.create_table()
 
     def create_table(self):
         workbook = xlsxwriter.Workbook(self.filename)
-        worksheet = workbook.add_worksheet("GPU List of scraped data")
+        worksheet = workbook.add_worksheet(f"{self.pc_part_selected} List of scraped data")
 
+        # Formats
         header_format = workbook.add_format({
-            'bold': True,
-            'font_color': 'white',
-            'bg_color': '#1F497D',
-            'align': 'center',
-            'border': 1
+            'bold': True, 'font_color': 'white', 'bg_color': '#1F497D',
+            'align': 'center', 'border': 1
         })
-        currency_format = workbook.add_format({
-            'num_format': '$#,##0.00',
-            'align': 'right'
-        })
+        currency_format = workbook.add_format({'num_format': '$#,##0.00', 'align': 'right'})
 
-        column_headers = ["Product Name", "GPU Brand", "GPU model", "Price", 'URL', 'Graphics Coprocessor', 'Graphics Ram Size', 'GPU Clock Speed', 'Video Output Resolution']
-        for col, header in enumerate(column_headers):
+        # Get all unique field names from all products
+        all_fields = set()
+        for product in self.data:
+            all_fields.update(product.keys())
+
+        # Define our fixed columns and additional dynamic columns
+        fixed_columns = ["title", "price", "url"]
+        dynamic_columns = [field for field in sorted(all_fields)
+                           if field not in fixed_columns]
+
+        # Write headers
+        headers = ["Product Name", "Price", "URL"] + dynamic_columns
+        for col, header in enumerate(headers):
             worksheet.write(0, col, header, header_format)
 
         # Write data rows
         for row, product in enumerate(self.data, start=1):
+            # Write fixed columns
             worksheet.write(row, 0, product.get("title", "N/A"))
-            worksheet.write(row, 1, product.get("brand", "N/A"))
-            worksheet.write(row, 2, product.get("gpu_model", "N/A"))
 
-            price_str = product.get("price", "$0").replace('$', '').replace(',', '.')
+            # Handle price formatting
+            price_str = str(product.get("price", "$0")).replace('$', '').replace(',', '')
             try:
                 price_num = float(price_str)
-                worksheet.write(row, 3, price_num, currency_format)
+                worksheet.write(row, 1, price_num, currency_format)
             except ValueError:
-                worksheet.write(row, 3, "N/A")
+                worksheet.write(row, 1, "N/A")
 
-            worksheet.write(row, 4, product.get("url", "N/A"))
-            worksheet.write(row, 5, product.get("graphics_coprocessor", "N/A"))
-            #'Graphics Ram Size', 'GPU Clock Speed', 'Video Output Interface'
-            worksheet.write(row, 6, product.get("graphics_ram_size", "N/A"))
-            worksheet.write(row, 7, product.get("gpu_clock_speed", "N/A"))
-            worksheet.write(row, 8, product.get("video_output_resolution", "N/A"))
+            worksheet.write(row, 2, product.get("url", "N/A"))
 
-        column_widths = [40, 15, 20, 20, 60, 25, 20, 15, 22]
-        for col_idx, width in enumerate(column_widths):
-            worksheet.set_column(col_idx, col_idx, width)
+            # Write dynamic columns
+            for col, field in enumerate(dynamic_columns, start=3):
+                worksheet.write(row, col, product.get(field, "N/A"))
 
-        chart = workbook.add_chart({'type': 'column'})
-        chart.add_series({
-            'name': 'Price Distribution',
-            'categories': f"='GPU List of scraped data'!$A$2:$A${len(self.data) + 1}",
-            'values': f"='GPU List of scraped data'!$D$2:$D${len(self.data) + 1}",
-            'fill': {'color': '#4C78DB'},
-        })
-        chart.set_title({'name': 'GPU Prices'})
-        worksheet.insert_chart('J5', chart)
+        # Auto-adjust column widths
+        for col, header in enumerate(headers):
+            max_len = len(header)
+            for row in range(len(self.data)):
+                value = str(product.get(header.lower().replace(" ", "_"), "N/A"))
+                if len(value) > max_len:
+                    max_len = len(value)
+            worksheet.set_column(col, col, min(max_len + 2, 50))
+
+        # --> include the function that will construct the color formatting
+        self._create_color_formatting(workbook, worksheet, self.data, self.pc_part_selected)
+
+        # Add chart
+        if len(self.data) > 0:
+            chart = workbook.add_chart({'type': 'column'})
+            chart.add_series({
+                'name': 'Price Distribution',
+                'categories': f"='{self.pc_part_selected} List of scraped data'!$A$2:$A${len(self.data) + 1}",
+                'values': f"='{self.pc_part_selected} List of scraped data'!$B$2:$B${len(self.data) + 1}",
+                'fill': {'color': '#4C78DB'},
+            })
+            chart.set_title({'name': f'{self.pc_part_selected} Prices'})
+            worksheet.insert_chart('J5', chart)
 
         workbook.close()
         print(f"File saved: {self.filename}")
 
+    def _create_color_formatting(self, workbook, worksheet, data, part_selected):
+        # Define color formats
+        print(data)
+        format_tier1 = workbook.add_format({'bg_color': '#D9F501'})  # Lime green
+        format_tier2 = workbook.add_format({'bg_color': '#F5EF00'})  # Light yellow
+        format_tier3 = workbook.add_format({'bg_color': '#F58600'})  # Orange
+        format_tier4 = workbook.add_format({'bg_color': '#F2320C'})  # Bright red
 
-if __name__ == "__main__":
-    sample_data = [
-        {
-            "title": "NVIDIA GeForce RTX 4090 Founders Edition",
-            "price": "$1,599.99",
-            "brand": "NVIDIA",
-            "gpu_model": "RTX 4090",
-            "url": "https://amazon.com/nvidia-rtx4090",
-            "graphics_coprocessor": "NVIDIA GeForce RTX 4090",
-            "graphics_ram_size": "24 GB GDDR6X",
-            "gpu_clock_speed": "2.23 GHz",
-            "video_output_resolution": "7680 x 4320"
-        },
-        {
-            "title": "ASUS ROG Strix RTX 4080 OC Edition",
-            "price": "$1,199.99",
-            "brand": "ASUS",
-            "gpu_model": "RTX 4080",
-            "url": "https://amazon.com/asus-rtx4080",
-            "graphics_coprocessor": "NVIDIA GeForce RTX 4080",
-            "graphics_ram_size": "16 GB GDDR6X",
-            "gpu_clock_speed": "2.21 GHz",
-            "video_output_resolution": "7680 x 4320"
-        },
-        {
-            "title": "MSI Gaming GeForce RTX 4070 Ti",
-            "price": "$799.99",
-            "brand": "MSI",
-            "gpu_model": "RTX 4070 Ti",
-            "url": "https://amazon.com/msi-rtx4070ti",
-            "graphics_coprocessor": "NVIDIA GeForce RTX 4070 Ti",
-            "graphics_ram_size": "12 GB GDDR6X",
-            "gpu_clock_speed": "2.31 GHz",
-            "video_output_resolution": "7680 x 4320"
-        },
-        {
-            "title": "AMD Radeon RX 7900 XTX",
-            "price": "$999.99",
-            "brand": "AMD",
-            "gpu_model": "RX 7900 XTX",
-            "url": "https://amazon.com/amd-rx7900xtx",
-            "graphics_coprocessor": "AMD Radeon RX 7900 XTX",
-            "graphics_ram_size": "24 GB GDDR6",
-            "gpu_clock_speed": "2.3 GHz",
-            "video_output_resolution": "7680 x 4320"
+        # Define price ranges for each component type
+        price_ranges = {
+            "Motherboard": [100, 200, 400],
+            "PSU": [60, 120, 200],
+            "Extension Cables": [60, 120, 200],
+            "RAM": [50, 100, 200],
+            "CPU": [100, 250, 500],
+            "GPU": [200, 400, 800],
+            "Case": [50, 100, 200],
+            "Fans": [10, 20, 40],
+            "AIO": [30, 80, 150],
+            "Air Coolers": [30, 80, 150],
+            # Default (storage devices)
+            "default": [50, 100, 200]
         }
-    ]
 
-    TableMaker(
-        data=sample_data,
-        website_scraped="Amazon",
-        output_folder="Amazon web search"
-    )
+        # Get the appropriate price ranges
+        ranges = price_ranges.get(part_selected, price_ranges["default"])
+        t1, t2, t3 = ranges
 
-    print("Test completed successfully. Check the 'Amazon web search' folder for the output file.")
+        # Apply conditional formatting
+        worksheet.conditional_format(1, 0, len(data), len(data), {
+            'type': 'formula',
+            'criteria': f'=AND($B2>0, $B2<={t1})',
+            'format': format_tier1
+        })
+
+        worksheet.conditional_format(1, 0, len(data), len(data), {
+            'type': 'formula',
+            'criteria': f'=AND($B2>{t1}, $B2<={t2})',
+            'format': format_tier2
+        })
+
+        worksheet.conditional_format(1, 0, len(data), len(data), {
+            'type': 'formula',
+            'criteria': f'=AND($B2>{t2}, $B2<={t3})',
+            'format': format_tier3
+        })
+
+        worksheet.conditional_format(1, 0, len(data), len(data), {
+            'type': 'formula',
+            'criteria': f'=$B2>{t3}',
+            'format': format_tier4
+        })
