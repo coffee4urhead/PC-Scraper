@@ -31,20 +31,17 @@ class DesktopScraper(BaseScraper):
         """Get all product links from a specific search results page URL"""
         product_links = []
 
-        # Find the product list container
         product_list = soup.find('ul', {'class': 'products'})
         if not product_list:
             print("No product links found")
             return product_links
-
-        # Find all product items - using CSS selector to match li elements that have class starting with 'sProduct'
+        
         products = product_list.find_all('li', id=re.compile('^product_[0-9]+$'))
 
         for product in products:
             if self.stop_event.is_set():
                 break
 
-            # Find the link - adjust the selector based on actual HTML
             link_tag = product.find('a', href=True)
 
             if link_tag and 'href' in link_tag.attrs:
@@ -58,11 +55,9 @@ class DesktopScraper(BaseScraper):
     def _parse_product_page(self, soup, product_url):
         """Extract detailed information from a product page and structure it for Excel output"""
         try:
-            # Parse title
             title_tag = soup.find('div', {'id': 'content'})
             title = title_tag.find('h1', {"itemprop": "name"}).get_text(strip=True) if title_tag else "N/A"
 
-            # Parse price
             price_tag = soup.find('span', {'itemprop': 'price'})
             price = price_tag.get_text(strip=True).replace("лв", "") if price_tag else "N/A"
 
@@ -71,8 +66,7 @@ class DesktopScraper(BaseScraper):
                 'price': price,
                 'url': product_url
             }
-
-            # Parse technical properties (fail-safe)
+            
             tech_table = soup.find('table', {'class': 'product-characteristics'})
             if tech_table:
                 for item in tech_table.find_all('tr'):

@@ -6,7 +6,6 @@ class AmazonScraper(BaseScraper):
     def __init__(self, gui_callback=None, driver=None):
         super().__init__(gui_callback, driver)
 
-        # GPU identification parameters
         self.gpu_keywords = [
             'graphics card', 'gpu', 'video card',
             'rtx', 'gtx', 'radeon', 'geforce',
@@ -36,7 +35,6 @@ class AmazonScraper(BaseScraper):
             if self.stop_event.is_set():
                 break
 
-            # Skip sponsored ads
             if product.find('span', string=re.compile('Sponsored')):
                 continue
 

@@ -28,24 +28,20 @@ class JarComputersScraper(BaseScraper):
         """Get all product links from a specific search results page URL"""
         product_links = []
 
-        # Find the product list container
         product_list = soup.find('ol', {'id': 'product_list'})
         if not product_list:
             print("No product links found")
             return product_links
 
-        # Find all product items - using CSS selector to match li elements that have class starting with 'sProduct'
         products = product_list.find_all('li', class_=lambda x: x and 'sProduct' in x.split())
 
         for product in products:
             if self.stop_event.is_set():
                 break
 
-            # Skip sponsored ads
             if product.find('span', string=re.compile('Sponsored')):
                 continue
 
-            # Find the link - adjust the selector based on actual HTML
             link_tag = product.find('a', href=True)
             title = product.find('span', {"class": "short_title fn"}).get_text(strip=True)
             is_unavailable = bool(product.find('span', {"class": "avail-old"}))
@@ -67,11 +63,9 @@ class JarComputersScraper(BaseScraper):
     def _parse_product_page(self, soup, product_url):
         """Extract detailed information from a product page and structure it for Excel output"""
         try:
-            # Parse title
             title_tag = soup.find('div', {'id': 'product_name'})
             title = title_tag.find("h1").get_text(strip=True) if title_tag else "N/A"
 
-            # Parse price
             price_tag = soup.find('div', {'class': 'price'})
             price = price_tag.get_text(strip=True).replace("лв", "") if price_tag else "N/A"
 
@@ -81,20 +75,18 @@ class JarComputersScraper(BaseScraper):
                 'url': product_url
             }
 
-            # Parse technical properties (fail-safe)
             tech_table = soup.find('ul', {'class': 'pprop'})
             if tech_table:
-                for item in tech_table.find_all('li'):  # Changed variable name from 'list' to 'item'
+                for item in tech_table.find_all('li'):
                     try:
                         label = item.get_text(strip=True).lower()
                         value_tag = item.find("b")
-                        if value_tag:  # Only proceed if <b> tag exists
+                        if value_tag:  
                             value = value_tag.get_text(strip=True)
                             product_data[label] = value
                     except Exception as e:
                         print(f"Skipping invalid property: {str(e)}")
-                        continue  # Skip this property but continue parsing others
-
+                        continue  
             self._update_gui({"type": "product", 'data': product_data})
             return product_data
 

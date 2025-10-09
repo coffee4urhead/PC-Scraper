@@ -46,7 +46,7 @@ class TableMaker:
             worksheet.write(row, 0, product.get("title", "N/A"))
 
             # Handle price formatting
-            price_str = str(product.get("price", "$0")).replace('$', '').replace(',', '')
+            price_str = str(product.get("price", "$0")).split("/")[0]
             try:
                 price_num = float(price_str)
                 worksheet.write(row, 1, price_num, currency_format)

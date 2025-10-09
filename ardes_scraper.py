@@ -27,8 +27,6 @@ class ArdesScraper(BaseScraper):
             if self.stop_event.is_set():
                 break
 
-            # Skip sponsored ads
-
             link_tag = product.find('a', {'href': re.compile("^/products/")})
             if link_tag and 'href' in link_tag.attrs:
                 full_url = urljoin(self.base_domain, link_tag['href'])
@@ -69,6 +67,5 @@ class ArdesScraper(BaseScraper):
             return None
 
     def _construct_page_url(self, base_url, search_term, page):
-        # If Ardes uses page numbers directly in URL (like ?page=2)
         return f"{base_url}/products/page/{page}?q={quote(search_term)}"
 

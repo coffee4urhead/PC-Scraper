@@ -30,11 +30,11 @@ class BaseScraper(ABC):
 
     def _get_html(self, url):
         try:
-            if self.driver:  # Selenium mode
+            if self.driver:  
                 self.driver.get(url)
-                time.sleep(2)  # Let JS render
+                time.sleep(2)  
                 return self.driver.page_source
-            else:  # requests mode
+            else:  
                 response = requests.get(url, headers=self._get_headers())
                 response.raise_for_status()
                 response.encoding = response.apparent_encoding
@@ -120,7 +120,7 @@ class BaseScraper(ABC):
         if self.scraping_thread:
             self.scraping_thread.join(timeout=1.0)
         if self.driver:
-            self.driver.quit()  # <-- NEW
+            self.driver.quit()  
 
     def _scrape_products(self, search_term, max_pages):
         try:
@@ -133,7 +133,6 @@ class BaseScraper(ABC):
 
                 self._update_progress(page - 1, total_pages)
 
-                # Use new method for pagination URL construction
                 page_url = self._construct_page_url(base_url, search_term, page)
 
                 product_links = self._get_product_links(page_url)
