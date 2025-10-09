@@ -271,7 +271,7 @@ class GUI:
 
     def _toggle_music(self):
         if not self.music_playing:
-            pygame.mixer.music.load("./Music/scraping-faster.wav")
+            pygame.mixer.music.load("./Music/scraping-faster.mp3")
             pygame.mixer.music.play(loops=-1)
             self.play_music_button.config(text="Pause")
             self.music_playing = True
