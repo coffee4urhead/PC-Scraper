@@ -2,11 +2,8 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
 from PIL import Image, ImageTk
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
 from dotenv import load_dotenv
+import subprocess
 import os
 
 from ardes_scraper import ArdesScraper
@@ -29,12 +26,11 @@ API_BASE_URL = os.getenv("BASE_URL")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 image_path = os.path.join(BASE_DIR, "images", "elf.jpg")
 
-#figure out a way to translate between words in different languages and transfer currencies
 class GUI:
     def __init__(self):
         self.root = tk.Tk()
         self.selected_website = "Desktop.bg"
-        self.scraper = DesktopScraper(self.update_gui)
+        self.scraper = None
         self.root.title("GUI App for Scraping General PC Information")
         self.root.geometry("1200x700")
 
@@ -43,11 +39,12 @@ class GUI:
         self.currency_symbol = "лв"
         self.preferred_language = "en-US"
         self.preferred_size = 12
-        self.preferred_font = "Comic Sans MS"
+        self.preferred_font = "Times New Roman"
         self.save_folder = os.path.join(os.path.expanduser("~"), "Desktop")
         self.selected_pc_part = "GPU"
         pygame.mixer.init()
         self.music_playing = False
+        
         self._setup_gui()
         self.all_products = []
         self.root.mainloop()
@@ -62,49 +59,49 @@ class GUI:
         canvas.create_image(0, 0, image=self.background_image, anchor="nw")
 
         label1 = tk.Label(self.root, text="GPU Web Scraper Program",
-                          font=("Comic Sans MS", 16, "bold"), bg='white')
+                          font=(self.preferred_font, 16, "bold"), bg='white')
         canvas.create_window(600, 50, anchor="center", window=label1)
 
         label2 = tk.Label(self.root, text="Search GPU model to scrape information:",
-                          font=("Comic Sans MS", 12), bg='white')
+                          font=(self.preferred_font, 12), bg='white')
         canvas.create_window(400, 120, anchor="center", window=label2)
 
-        self.entry = tk.Entry(self.root, width=30, font=("Comic Sans MS", 13, "italic"))
+        self.entry = tk.Entry(self.root, width=30, font=(self.preferred_font, 13, "italic"))
         self.root.bind("<Return>", self._on_key_press)
         canvas.create_window(750, 120, anchor="center", window=self.entry)
 
         self.submit_button = tk.Button(self.root, text="Submit", command=self._on_submit,
-                                       width=7, font=("Comic Sans MS", 13, "bold"),
+                                       width=7, font=(self.preferred_font, 13, "bold"),
                                        height=1, cursor="hand2", padx=10, pady=5)
         canvas.create_window(650, 180, anchor="center", window=self.submit_button)
 
         options = ["Motherboard", 'PSU', 'RAM', 'GPU', 'Case', 'Fans', 'CPU', 'AIO', 'Air Coolers', 'Extension Cables', 'HDD', 'SATA SSD', 'NVME SSD']
 
-        self.combo_scrape_options = ttk.Combobox(self.root, width=20, font=("Comic Sans MS", 13, "bold"), values=options)
+        self.combo_scrape_options = ttk.Combobox(self.root, width=20, font=(self.preferred_font, 13, "bold"), values=options)
         self.combo_scrape_options.current(3)
         self.combo_scrape_options.bind("<<ComboboxSelected>>", self.on_selection)
         canvas.create_window(1050, 120, anchor="center", window=self.combo_scrape_options)
 
         options = ['Ardes.bg', 'jarcomputers.com', 'Desktop.bg', 'Amazon.com', 'Amazon.de', 'Amazon.uk']
 
-        self.combo_website_options = ttk.Combobox(self.root, width=20, font=("Comic Sans MS", 13, "bold"),
+        self.combo_website_options = ttk.Combobox(self.root, width=20, font=(self.preferred_font, 13, "bold"),
                                                  values=options)
         self.combo_website_options.current(2)
         self.combo_website_options.bind("<<ComboboxSelected>>", self.on_selection_instantiate)
         canvas.create_window(1050, 150, anchor="center", window=self.combo_website_options)
 
-        quit_button = tk.Button(self.root, text="Quit", command=self.root.destroy,
-                                width=7, font=("Comic Sans MS", 13, "bold"),
+        quit_button = tk.Button(self.root, text="Quit", command=self.on_closing,
+                                width=7, font=(self.preferred_font, 13, "bold"),
                                 height=1, cursor="hand2", padx=10, pady=5)
         canvas.create_window(850, 180, anchor="center", window=quit_button)
 
         self.play_music_button = tk.Button(self.root, text="Play Music", command=self._toggle_music,
-                                           width=7, font=("Comic Sans MS", 13, "bold"),
+                                           width=7, font=(self.preferred_font, 13, "bold"),
                                            height=1, cursor="hand2", padx=10, pady=5)
         canvas.create_window(750, 180, anchor="center", window=self.play_music_button)
 
         self.folder_label = tk.Label(self.root, text=f"Save folder: {self.save_folder}",
-                             font=("Comic Sans MS", 10), bg='white')
+                             font=(self.preferred_font, 10), bg='white')
         canvas.create_window(450, 180, anchor="center", window=self.folder_label)
 
         self.select_folder_button = tk.Button(
@@ -112,7 +109,7 @@ class GUI:
             text="Select Save Folder",
             command=self.ask_save_dir,
             width=15,
-            font=("Comic Sans MS", 12, "bold"),
+            font=(self.preferred_font, 12, "bold"),
             cursor="hand2"
         )
 
@@ -123,7 +120,7 @@ class GUI:
         canvas.create_window(600, 230, anchor="center", window=self.progress_bar)
 
         self.status_label = tk.Label(self.root, text="Ready to scrape...",
-                                     font=("Comic Sans MS", 12), bg='white', padx=7, pady=7)
+                                     font=(self.preferred_font, 12), bg='white', padx=7, pady=7)
         canvas.create_window(600, 260, anchor="center", window=self.status_label)
 
         results_frame = tk.Frame(self.root)
@@ -131,7 +128,7 @@ class GUI:
                              width=1000, height=400)
 
         self.results_text = tk.Text(results_frame, wrap=tk.WORD,
-                                    font=("Comic Sans MS", 11),
+                                    font=(self.preferred_font, 11),
                                     width=120, height=20)
         scrollbar = tk.Scrollbar(results_frame, command=self.results_text.yview)
         self.results_text.config(yscrollcommand=scrollbar.set)
@@ -141,12 +138,12 @@ class GUI:
 
         self.results_text.tag_config('error', foreground='red')
         self._create_menu()
-
+                
     def _create_menu(self):
         menubar = tk.Menu(self.root)
 
         file_menu = tk.Menu(menubar, tearoff=0)
-        file_menu.add_command(label="Exit", command=self.root.quit)
+        file_menu.add_command(label="Exit", command=self.on_closing)
         menubar.add_cascade(label="File", menu=file_menu)
 
         options_menu = tk.Menu(menubar, tearoff=0)
@@ -167,7 +164,6 @@ class GUI:
         if folder_path:
             self.save_folder = folder_path
             self.folder_label.config(text=f"Save folder: {self.save_folder}")
-
 
     def show_about_info(self):
         about_win = self.create_new_window("About", "400x300")
@@ -224,8 +220,7 @@ class GUI:
         self.preferred_currency = currency_code
         self.currency_format = custom_format if format_choice == "custom" else "0.00"
         self.currency_symbol = self._get_currency_symbol(currency_code)
-        print(
-            f"In the parent class information: {self.currency_symbol}{self.preferred_currency} {self.currency_format}")
+        print(f"In the parent class information: {self.currency_symbol}{self.preferred_currency} {self.currency_format}")
 
     def update_language_and_font_options(self, font, size, language):
         self.preferred_language = language
@@ -259,26 +254,26 @@ class GUI:
 
     def on_selection_instantiate(self, event):
         self.selected_website = self.combo_website_options.get()
-        chrome_options = Options()
-        chrome_options.add_argument("--headless")  
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--disable-dev-shm-usage")
-
-        driver = webdriver.Chrome(
-            service=Service(ChromeDriverManager().install()),
-            options=chrome_options
-        )
-
-        if self.selected_website == "Amazon.com":
-            self.scraper = AmazonScraper(self.update_gui)
-        elif self.selected_website == "Ardes.bg":
-            self.scraper = ArdesScraper(self.update_gui, driver=driver)
-        elif self.selected_website == 'jarcomputers.com':
-            self.scraper = JarComputersScraper(self.update_gui, driver=driver)
-        elif self.selected_website == "Desktop.bg":
-            self.scraper = DesktopScraper(self.update_gui)
-
-        print(f"Selected website: {self.selected_website}")
+    
+        print(f"DEBUG: Initializing scraper for {self.selected_website}")
+    
+        try:
+            # Create scraper WITHOUT passing any browser/driver
+            if self.selected_website == "Amazon.com":
+                self.scraper = AmazonScraper(self.update_gui)  # No driver parameter
+            elif self.selected_website == "Ardes.bg":
+                self.scraper = ArdesScraper(self.update_gui)   # No driver parameter
+            elif self.selected_website == 'jarcomputers.com':
+                self.scraper = JarComputersScraper(self.update_gui)  # No driver parameter
+            elif self.selected_website == "Desktop.bg":
+                self.scraper = DesktopScraper(self.update_gui)  # No driver parameter
+            
+            print(f"DEBUG: Scraper created successfully for {self.selected_website}")
+            # Don't check self.scraper.driver - it will be None until scraping starts
+        
+        except Exception as e:
+            self.status_label.config(text=f"Scraper init failed: {str(e)}", foreground="red")
+            print(f"DEBUG: Scraper initialization failed: {e}")
 
     def _toggle_music(self):
         if not self.music_playing:
@@ -410,5 +405,19 @@ class GUI:
             self.progress_bar['value'] = 0
             self.status_label.config(text="Starting scrape...", foreground="blue")
             self.scraper.start_scraping(search_term)
+            
+    def on_closing(self):
+        """Proper cleanup when closing the application"""
+        print("DEBUG: Starting application cleanup...")
+    
+        # Stop any active scraping first
+        if self.scraper:
+            print("DEBUG: Stopping scraper...")
+            self.scraper.stop_scraping()
+    
+        # No browser cleanup needed - each scraper manages its own
+        print("DEBUG: Cleanup complete, destroying window...")
+        self.root.destroy()
 
-GUI()
+if __name__ == "__main__":
+    GUI()

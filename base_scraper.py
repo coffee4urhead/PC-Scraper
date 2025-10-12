@@ -1,13 +1,12 @@
 from abc import ABC, abstractmethod
-import requests
-from bs4 import BeautifulSoup
 import time
 import random
 import threading
 import queue
 import string
+from playwright.sync_api import sync_playwright
 
-class BaseScraper(ABC):
+class PlaywrightBaseScraper(ABC):
     def __init__(self, gui_callback=None, driver=None):
         self.currency_symbol = "лв"
         self.currency_code = "BGN"
@@ -19,78 +18,14 @@ class BaseScraper(ABC):
         self.delay_between_requests = 2
         self.max_pages = 10
         self.current_progress = 0
-        self.driver = driver
-
-    def _get_headers(self):
-        return {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.5",
-            "Accept-Encoding": "gzip, deflate, br",
-            "Connection": "keep-alive"
-        }
-
-    def _get_html(self, url):
-        try:
-            if self.driver:  
-                self.driver.get(url)
-                time.sleep(2)  
-                return self.driver.page_source
-            else:  
-                response = requests.get(url, headers=self._get_headers())
-                response.raise_for_status()
-                response.encoding = response.apparent_encoding
-                print(response.headers)
-                return response.text
-        except Exception as e:
-            self._update_gui({'type': 'error', 'message': f"Page fetch error: {str(e)}"})
-            return None
-
-    def generate_random_crid(self):
-        return ''.join(random.choices(string.ascii_uppercase + string.digits, k=12))
-
-    @abstractmethod
-    def _get_base_url(self, search_term):
-        """Website-specific search URL construction"""
-        pass
-
-    @abstractmethod
-    def _parse_product_page(self, soup, product_url):
-        """Website-specific product page parsing"""
-        pass
-
-    def _get_product_links(self, page_url):
-        try:
-            time.sleep(random.uniform(1, 2))
-            html = self._get_html(page_url)
-
-            if not html:
-                return []
-
-            soup = BeautifulSoup(html, 'html.parser')
-            return self._extract_product_links(soup)
-
-        except Exception as e:
-            self._update_gui({'type': 'error', 'message': str(e)})
-            return []
-
-    @abstractmethod
-    def _extract_product_links(self, soup):
-        """Website-specific product link extraction"""
-        pass
-
-    def _get_product_details(self, product_url):
-        try:
-            html = self._get_html(product_url)
-            if not html:
-                return None
-
-            soup = BeautifulSoup(html, 'html.parser')
-            return self._parse_product_page(soup, product_url)
-
-        except Exception as e:
-            self._update_gui({'type': 'error', 'message': f"Product page error: {str(e)}"})
-            return None
+        
+        # Each scraper manages its OWN browser
+        self.driver = None
+        self.playwright = None
+        
+        # Don't accept external driver - create our own
+        if driver is not None:
+            print("WARNING: External driver passed - scraper should manage its own browser")
 
     def _update_gui(self, data):
         if self.gui_callback:
@@ -118,53 +53,153 @@ class BaseScraper(ABC):
         return True
 
     def stop_scraping(self):
+        """Stop scraping and cleanup"""
         self.stop_event.set()
         if self.scraping_thread:
-            self.scraping_thread.join(timeout=1.0)
-        if self.driver:
-            self.driver.quit()  
+            self.scraping_thread.join(timeout=5.0)  # Give time for cleanup
+        # Browser cleanup happens in _scrape_products finally block
+
+    def _launch_browser(self):
+        """Launch browser in the scraper's own thread"""
+        try:
+            print("DEBUG: Launching browser in scraper thread...")
+            self.playwright = sync_playwright().start()
+            self.driver = self.playwright.chromium.launch(
+                headless=False,  # Visible for debugging
+                timeout=30000
+            )
+            print(f"DEBUG: Browser launched in scraper thread: {self.driver.is_connected()}")
+            return True
+        except Exception as e:
+            print(f"DEBUG: Browser launch failed in scraper thread: {e}")
+            return False
+
+    def _close_browser(self):
+        """Close browser in the scraper's own thread"""
+        try:
+            if self.driver and self.driver.is_connected():
+                self.driver.close()
+            if self.playwright:
+                self.playwright.stop()
+        except Exception as e:
+            print(f"DEBUG: Browser cleanup warning: {e}")
+        finally:
+            self.driver = None
+            self.playwright = None
 
     def _scrape_products(self, search_term, max_pages):
+        """Main scraping logic - ALL in scraper thread"""
         try:
+            # Launch browser in THIS thread
+            if not self._launch_browser():
+                error_msg = "Failed to launch browser in scraper thread"
+                self._update_gui({'type': 'error', 'message': error_msg})
+                return
+            
+            # Validate browser connection
+            if not self.driver.is_connected():
+                error_msg = "Browser not connected in scraper thread"
+                self._update_gui({'type': 'error', 'message': error_msg})
+                return
+
+            print(f"DEBUG: Starting scrape in scraper thread")
+            
             base_url = self._get_base_url(search_term)
             total_pages = min(max_pages, self.max_pages)
 
-            for page in range(1, total_pages + 1):
+            for page_num in range(1, total_pages + 1):
                 if self.stop_event.is_set():
+                    print("DEBUG: Scraping stopped by stop_event")
                     break
 
-                self._update_progress(page - 1, total_pages)
-
-                page_url = self._construct_page_url(base_url, search_term, page)
-
-                product_links = self._get_product_links(page_url)
-                if not product_links:
+                # Check browser connection
+                if not self.driver.is_connected():
+                    error_msg = "Browser disconnected during scraping."
+                    self._update_gui({'type': 'error', 'message': error_msg})
                     break
 
-                for i, product_url in enumerate(product_links):
-                    if self.stop_event.is_set():
+                self._update_progress(page_num - 1, total_pages)
+
+                page_url = self._construct_page_url(base_url, search_term, page_num)
+                print(f"DEBUG: Processing page {page_num}: {page_url}")
+                
+                # Create a new page for each search page
+                search_page = self.driver.new_page()
+                try:
+                    product_links = self._extract_product_links(search_page, page_url)
+                    print(f"DEBUG: Page {page_num}: Found {len(product_links)} product links")
+                    
+                    if not product_links:
+                        print(f"DEBUG: No products found on page {page_num}")
                         break
 
-                    self._update_progress(
-                        (page - 1) + (i / len(product_links)),
-                        total_pages
-                    )
+                    for i, product_url in enumerate(product_links):
+                        if self.stop_event.is_set():
+                            break
 
-                    product = self._get_product_details(product_url)
-                    if product:
-                        self._update_gui({"type": "product", 'data': product})
+                        # Check connection before each product
+                        if not self.driver.is_connected():
+                            error_msg = "Browser disconnected during product processing."
+                            self._update_gui({'type': 'error', 'message': error_msg})
+                            break
 
-                    time.sleep(self.delay_between_requests * random.uniform(1, 2))
+                        self._update_progress(
+                            (page_num - 1) + (i / len(product_links)),
+                            total_pages
+                        )
+
+                        # Create a new page for each product
+                        product_page = self.driver.new_page()
+                        try:
+                            print(f"DEBUG: Scraping product {i+1}/{len(product_links)}: {product_url}")
+                            product_data = self._parse_product_page(product_page, product_url)
+                            if product_data:
+                                self._update_gui({"type": "product", 'data': product_data})
+                                print(f"DEBUG: Successfully scraped product: {product_data.get('title', 'Unknown')}")
+                            else:
+                                print(f"DEBUG: Failed to scrape product: {product_url}")
+                        finally:
+                            if not product_page.is_closed():
+                                product_page.close()
+
+                        time.sleep(self.delay_between_requests * random.uniform(1, 2))
+                
+                finally:
+                    if not search_page.is_closed():
+                        search_page.close()
 
             self._update_progress(total_pages, total_pages)
             self._update_gui({'type': 'complete'})
+            print("DEBUG: Scraping completed successfully")
 
         except Exception as e:
+            print(f"DEBUG: Scraping error: {str(e)}")
             self._update_gui({'type': 'error', 'message': str(e)})
         finally:
+            # Always close browser in the same thread
+            self._close_browser()
             self.stop_event.set()
+
+    def generate_random_crid(self):
+        """Generate random crid for Amazon URLs"""
+        return ''.join(random.choices(string.ascii_uppercase + string.digits, k=12))
+
+    @abstractmethod
+    def _get_base_url(self, search_term):
+        """Website-specific search URL construction"""
+        pass
 
     @abstractmethod
     def _construct_page_url(self, base_url, search_term, page):
         """Construct the URL for a specific page number"""
+        pass
+
+    @abstractmethod
+    def _extract_product_links(self, page, page_url):
+        """Extract product links from search page using Playwright"""
+        pass
+
+    @abstractmethod
+    def _parse_product_page(self, page, product_url):
+        """Parse product details using Playwright"""
         pass

@@ -1,10 +1,10 @@
 import re
 from urllib.parse import urljoin, quote
-from base_scraper import BaseScraper
+from base_scraper import PlaywrightBaseScraper
 
-class AmazonScraper(BaseScraper):
-    def __init__(self, gui_callback=None, driver=None):
-        super().__init__(gui_callback, driver)
+class AmazonScraper(PlaywrightBaseScraper):
+    def __init__(self, gui_callback=None):
+        super().__init__(gui_callback)
 
         self.gpu_keywords = [
             'graphics card', 'gpu', 'video card',
@@ -26,60 +26,139 @@ class AmazonScraper(BaseScraper):
             "&ref=nb_sb_noss_1"
         )
 
-    def _extract_product_links(self, soup):
-        """Get all product links from a specific search results page URL"""
+    def _construct_page_url(self, base_url, search_term, page):
+        if page > 1:
+            return f"{base_url}&page={page}"
+        return base_url
+
+    def _extract_product_links(self, page, page_url):
+        """Get all product links from Amazon search results using Playwright"""
         product_links = []
-        products = soup.find_all('div', {'data-component-type': 's-search-result'})
+        print(f"DEBUG: Extracting product links from Amazon: {page_url}")
 
-        for product in products:
-            if self.stop_event.is_set():
-                break
-
-            if product.find('span', string=re.compile('Sponsored')):
-                continue
-
-            link_tag = product.find('a', {'class': 'a-link-normal s-no-outline'})
-            if link_tag and 'href' in link_tag.attrs:
-                full_url = urljoin('https://www.amazon.com', link_tag['href'])
-                clean_url = full_url.split('ref=')[0].split('?')[0]
-                if '/dp/' in clean_url and clean_url not in product_links:
-                    product_links.append(clean_url)
-
-        return product_links
-
-    def _parse_product_page(self, soup, product_url):
-        """Extract detailed information from a product page and structure it for Excel output"""
         try:
-            title = soup.find('span', {'id': 'productTitle'})
-            title = title.get_text(strip=True) if title else "No Title"
+            # Navigate to the search page
+            page.goto(page_url, wait_until='domcontentloaded', timeout=30000)
+            
+            # Wait for search results to load
+            page.wait_for_selector('div[data-component-type="s-search-result"]', timeout=15000)
+            
+            # Get all product elements
+            product_elements = page.query_selector_all('div[data-component-type="s-search-result"]')
+            print(f"DEBUG: Found {len(product_elements)} Amazon product elements")
+            
+            for product in product_elements:
+                if self.stop_event.is_set():
+                    break
 
-            price_whole = soup.find('span', {'class': 'a-price-whole'})
-            price_fraction = soup.find('span', {'class': 'a-price-fraction'})
-            price = f"${price_whole.get_text(strip=True)}{price_fraction.get_text(strip=True)}" if price_whole and price_fraction else "N/A"
+                # Check for sponsored products
+                sponsored = product.query_selector('span:has-text("Sponsored")')
+                if sponsored:
+                    continue
 
+                # Get the product link
+                link_element = product.query_selector('a.a-link-normal.s-no-outline[href]')
+                if link_element:
+                    href = link_element.get_attribute('href')
+                    if href:
+                        full_url = urljoin('https://www.amazon.com', href)
+                        clean_url = full_url.split('ref=')[0].split('?')[0]
+                        if '/dp/' in clean_url and clean_url not in product_links:
+                            product_links.append(clean_url)
+                            
+                            # Get title for debugging
+                            title_element = product.query_selector('h2 a span')
+                            title = title_element.inner_text().strip() if title_element else "Unknown"
+                            print(f"DEBUG: Added Amazon product: {title}")
+
+            print(f"DEBUG: Total Amazon product links found: {len(product_links)}")
+            return product_links
+
+        except Exception as e:
+            print(f"DEBUG: Error extracting product links from Amazon: {e}")
+            # Take screenshot for debugging
+            try:
+                page.screenshot(path="amazon_search_error.png")
+            except:
+                pass
+            return []
+
+    def _parse_product_page(self, page, product_url):
+        """Extract detailed information from Amazon product page using Playwright"""
+        print(f"DEBUG: Parsing Amazon product: {product_url}")
+        
+        try:
+            # Navigate to product page
+            page.goto(product_url, wait_until='domcontentloaded', timeout=30000)
+            
+            # Wait for product title to load
+            page.wait_for_selector('span#productTitle', timeout=15000)
+            
+            # Extract title
+            title_element = page.query_selector('span#productTitle')
+            title = title_element.inner_text().strip() if title_element else "No Title"
+            
+            # Extract price - Amazon has multiple price locations
+            price = "N/A"
+            
+            # Try main price first
+            price_whole = page.query_selector('span.a-price-whole')
+            price_fraction = page.query_selector('span.a-price-fraction')
+            
+            if price_whole and price_fraction:
+                price_whole_text = price_whole.inner_text().strip()
+                price_fraction_text = price_fraction.inner_text().strip()
+                price = f"${price_whole_text}{price_fraction_text}"
+            else:
+                # Try alternative price location
+                price_element = page.query_selector('span.a-price .a-offscreen')
+                if price_element:
+                    price = price_element.inner_text().strip()
+            
             product_data = {
                 'title': title,
                 'price': price,
                 'url': product_url
             }
 
-            tech_table = soup.find('table', {'class': 'a-normal a-spacing-micro'})
+            print(f"DEBUG: Extracted Amazon product: {title} - {price}")
+
+            # Extract technical specifications from product table
+            tech_table = page.query_selector('table.a-normal.a-spacing-micro')
+            if not tech_table:
+                # Try alternative table selectors
+                tech_table = page.query_selector('table.prodDetTable')
+                if not tech_table:
+                    tech_table = page.query_selector('div#productDetails_db_sections')
+            
             if tech_table:
-                for row in tech_table.find_all('tr'):
-                    tds = row.find_all('td')
+                rows = tech_table.query_selector_all('tr')
+                for row in rows:
+                    try:
+                        cells = row.query_selector_all('td')
+                        if len(cells) >= 2:
+                            label = cells[0].inner_text().strip().lower()
+                            value = cells[1].inner_text().strip()
+                            product_data[label] = value
+                            print(f"DEBUG: Added Amazon spec: {label} = {value}")
+                    except Exception as e:
+                        print(f"DEBUG: Skipping invalid Amazon property: {str(e)}")
+                        continue
 
-                    label = tds[0].get_text(strip=True).lower()
-                    value = tds[1].get_text(strip=True)
-                    product_data[label] = value
+            # Also try to get product details from feature bullets
+            feature_bullets = page.query_selector('div#feature-bullets')
+            if feature_bullets:
+                bullets = feature_bullets.query_selector_all('li span.a-list-item')
+                for i, bullet in enumerate(bullets):
+                    product_data[f'feature_{i+1}'] = bullet.inner_text().strip()
 
-            self._update_gui({"type": "product", 'data': product_data})
             return product_data
 
         except Exception as e:
-            self._update_gui({'type': 'error', 'message': f"Product page error: {str(e)}"})
+            print(f"DEBUG: Error parsing Amazon product page: {e}")
+            # Take screenshot for debugging
+            try:
+                page.screenshot(path="amazon_product_error.png")
+            except:
+                pass
             return None
-
-    def _construct_page_url(self, base_url, search_term, page):
-        if page > 1:
-            return f"{base_url}&page={page}"
-        return base_url
