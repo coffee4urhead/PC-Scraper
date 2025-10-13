@@ -13,7 +13,7 @@ from desktop_bg_scraper import DesktopScraper
 from currency_converter import convert_currency
 
 from windows.help_window import HelpWindow
-from windows.option_window import OptionsWindow
+from options_window import OptionsWindow
 from windows.font_options_window import WindowsFontOptions
 
 import pygame
@@ -39,6 +39,8 @@ class GUI:
         self.currency_symbol = "лв"
         self.preferred_language = "en-US"
         self.preferred_size = 12
+        self.preferred_browser = "Chrome"
+        self.preferred_theme = "Light"
         self.preferred_font = "Times New Roman"
         self.save_folder = os.path.join(os.path.expanduser("~"), "Desktop")
         self.selected_pc_part = "GPU"
@@ -58,21 +60,22 @@ class GUI:
         canvas.pack(fill="both", expand=True)
         canvas.create_image(0, 0, image=self.background_image, anchor="nw")
 
-        label1 = tk.Label(self.root, text="GPU Web Scraper Program",
+        # Store references to ALL widgets
+        self.label1 = tk.Label(self.root, text="GPU Web Scraper Program",
                           font=(self.preferred_font, 16, "bold"), bg='white')
-        canvas.create_window(600, 50, anchor="center", window=label1)
+        canvas.create_window(600, 50, anchor="center", window=self.label1)
 
-        label2 = tk.Label(self.root, text="Search GPU model to scrape information:",
+        self.label2 = tk.Label(self.root, text="Search GPU model to scrape information:",
                           font=(self.preferred_font, 12), bg='white')
-        canvas.create_window(400, 120, anchor="center", window=label2)
+        canvas.create_window(400, 120, anchor="center", window=self.label2)
 
         self.entry = tk.Entry(self.root, width=30, font=(self.preferred_font, 13, "italic"))
         self.root.bind("<Return>", self._on_key_press)
         canvas.create_window(750, 120, anchor="center", window=self.entry)
 
         self.submit_button = tk.Button(self.root, text="Submit", command=self._on_submit,
-                                       width=7, font=(self.preferred_font, 13, "bold"),
-                                       height=1, cursor="hand2", padx=10, pady=5)
+                                   width=7, font=(self.preferred_font, 13, "bold"),
+                                   height=1, cursor="hand2", padx=10, pady=5)
         canvas.create_window(650, 180, anchor="center", window=self.submit_button)
 
         options = ["Motherboard", 'PSU', 'RAM', 'GPU', 'Case', 'Fans', 'CPU', 'AIO', 'Air Coolers', 'Extension Cables', 'HDD', 'SATA SSD', 'NVME SSD']
@@ -85,23 +88,24 @@ class GUI:
         options = ['Ardes.bg', 'jarcomputers.com', 'Desktop.bg', 'Amazon.com', 'Amazon.de', 'Amazon.uk']
 
         self.combo_website_options = ttk.Combobox(self.root, width=20, font=(self.preferred_font, 13, "bold"),
-                                                 values=options)
+                                             values=options)
         self.combo_website_options.current(2)
         self.combo_website_options.bind("<<ComboboxSelected>>", self.on_selection_instantiate)
         canvas.create_window(1050, 150, anchor="center", window=self.combo_website_options)
 
-        quit_button = tk.Button(self.root, text="Quit", command=self.on_closing,
+        # Store reference to quit_button
+        self.quit_button = tk.Button(self.root, text="Quit", command=self.on_closing,
                                 width=7, font=(self.preferred_font, 13, "bold"),
                                 height=1, cursor="hand2", padx=10, pady=5)
-        canvas.create_window(850, 180, anchor="center", window=quit_button)
+        canvas.create_window(850, 180, anchor="center", window=self.quit_button)
 
         self.play_music_button = tk.Button(self.root, text="Play Music", command=self._toggle_music,
-                                           width=7, font=(self.preferred_font, 13, "bold"),
-                                           height=1, cursor="hand2", padx=10, pady=5)
+                                       width=7, font=(self.preferred_font, 13, "bold"),
+                                       height=1, cursor="hand2", padx=10, pady=5)
         canvas.create_window(750, 180, anchor="center", window=self.play_music_button)
 
         self.folder_label = tk.Label(self.root, text=f"Save folder: {self.save_folder}",
-                             font=(self.preferred_font, 10), bg='white')
+                         font=(self.preferred_font, 10), bg='white')
         canvas.create_window(450, 180, anchor="center", window=self.folder_label)
 
         self.select_folder_button = tk.Button(
@@ -112,24 +116,23 @@ class GUI:
             font=(self.preferred_font, 12, "bold"),
             cursor="hand2"
         )
-
         canvas.create_window(200, 180, anchor="center", window=self.select_folder_button)
 
         self.progress_bar = ttk.Progressbar(self.root, orient='horizontal',
-                                            length=600, mode='determinate')
+                                        length=600, mode='determinate')
         canvas.create_window(600, 230, anchor="center", window=self.progress_bar)
 
         self.status_label = tk.Label(self.root, text="Ready to scrape...",
-                                     font=(self.preferred_font, 12), bg='white', padx=7, pady=7)
+                                 font=(self.preferred_font, 12), bg='white', padx=7, pady=7)
         canvas.create_window(600, 260, anchor="center", window=self.status_label)
 
         results_frame = tk.Frame(self.root)
         canvas.create_window(600, 480, anchor="center", window=results_frame,
-                             width=1000, height=400)
+                         width=1000, height=400)
 
         self.results_text = tk.Text(results_frame, wrap=tk.WORD,
-                                    font=(self.preferred_font, 11),
-                                    width=120, height=20)
+                                font=(self.preferred_font, 11),
+                                width=120, height=20)
         scrollbar = tk.Scrollbar(results_frame, command=self.results_text.yview)
         self.results_text.config(yscrollcommand=scrollbar.set)
 
@@ -138,7 +141,18 @@ class GUI:
 
         self.results_text.tag_config('error', foreground='red')
         self._create_menu()
-                
+
+    def create_new_window(self, title, size="600x400"):
+        """Generic method to create new windows with current font settings"""
+        new_window = tk.Toplevel(self.root)
+        new_window.title(title)
+        new_window.geometry(size)
+    
+        # Apply current font to the window (this will be inherited by child widgets)
+        new_window.option_add('*Font', (self.preferred_font, self.preferred_size))
+    
+        return new_window
+    
     def _create_menu(self):
         menubar = tk.Menu(self.root)
 
@@ -148,7 +162,6 @@ class GUI:
 
         options_menu = tk.Menu(menubar, tearoff=0)
         options_menu.add_command(label="User Options", command=self.show_user_options)
-        options_menu.add_command(label="Language & Font", command=self.show_language_options)
         menubar.add_cascade(label="Options", menu=options_menu)
 
         help_menu = tk.Menu(menubar, tearoff=0)
@@ -166,7 +179,7 @@ class GUI:
             self.folder_label.config(text=f"Save folder: {self.save_folder}")
 
     def show_about_info(self):
-        about_win = self.create_new_window("About", "400x300")
+        about_win = self.create_new_window("About", "600x500")
         about_text = """Web Scraper Application
     Version 1.0
     Developed by Coffee4urhead
@@ -178,9 +191,11 @@ class GUI:
     - Data integrity checks
     - Data processing at another level
     """
-        label = tk.Label(about_win, text=about_text, justify=tk.CENTER, padx=20, pady=20)
+        label = tk.Label(about_win, text=about_text, justify=tk.CENTER, 
+                    padx=20, pady=20, font=(self.preferred_font, self.preferred_size))
         label.pack()
-        back_btn = tk.Button(about_win, text="OK", command=about_win.destroy)
+        back_btn = tk.Button(about_win, text="OK", command=about_win.destroy,
+                                         font=(self.preferred_font, self.preferred_size))
         back_btn.pack(pady=10)
 
     def show_about(self):
@@ -197,13 +212,6 @@ class GUI:
         else:
             self._option_window.window.lift()
 
-    def show_language_options(self):
-        if not hasattr(self, '_language_options_window') or not self._language_options_window.window.winfo_exists():
-            self._language_options_window = WindowsFontOptions(self)
-            self._language_options_window.window.protocol("WM_DELETE_WINDOW", self._on_options_close)
-        else:
-            self._language_options_window.window.lift()
-
     def _on_options_close(self):
         if hasattr(self, '_option_window'):
             self._option_window.window.destroy()
@@ -212,7 +220,7 @@ class GUI:
             self._language_options_window.window.destroy()
             del self._language_options_window
 
-    def update_options(self, selected_text, format_choice, custom_format=None):
+    def update_options(self, selected_text, format_choice, custom_format=None, browser=None, theme=None):
         currency_code = next(
             (code for text, code in self._option_window.currency_options if text == selected_text),
             "USD"
@@ -220,13 +228,16 @@ class GUI:
         self.preferred_currency = currency_code
         self.currency_format = custom_format if format_choice == "custom" else "0.00"
         self.currency_symbol = self._get_currency_symbol(currency_code)
-        print(f"In the parent class information: {self.currency_symbol}{self.preferred_currency} {self.currency_format}")
-
-    def update_language_and_font_options(self, font, size, language):
-        self.preferred_language = language
-        self.preferred_size = size
-        self.preferred_font = font
-        print(f"Language info: language: {language}, size: {size}, font: {font}")
+    
+        # Update browser and theme if provided
+        if browser:
+            self.preferred_browser = browser
+        if theme:
+            self.preferred_theme = theme
+            self._apply_theme(theme)
+        
+        self.update_fonts()
+        print(f"Settings updated - Currency: {self.currency_symbol}{self.preferred_currency}, Format: {self.currency_format}, Browser: {getattr(self, 'preferred_browser', 'Not set')}, Theme: {getattr(self, 'preferred_theme', 'Not set')}")
 
     def _get_currency_symbol(self, currency_code):
         """Helper method to get currency symbol"""
@@ -235,13 +246,6 @@ class GUI:
             "CNY": "¥", "BGN": "лв", "BRL": "R$", "CAD": "$",
         }
         return symbols.get(currency_code, currency_code + " ")
-
-    def create_new_window(self, title, size="600x400"):
-        """Generic method to create new windows"""
-        new_window = tk.Toplevel(self.root)
-        new_window.title(title)
-        new_window.geometry(size)
-        return new_window
 
     def return_to_main(self, window_to_close):
         """Close the current window and return to main"""
@@ -418,6 +422,81 @@ class GUI:
         # No browser cleanup needed - each scraper manages its own
         print("DEBUG: Cleanup complete, destroying window...")
         self.root.destroy()
+
+    def update_browser_preference(self, browser):
+        """Update the preferred browser setting"""
+        self.preferred_browser = browser
+        print(f"Browser preference updated to: {browser}")
+
+    def update_theme_preference(self, theme):
+        """Update the preferred theme setting"""
+        self.preferred_theme = theme
+        print(f"Theme preference updated to: {theme}")
+    
+        # You can implement theme changes here
+        self._apply_theme(theme)
+
+    def _apply_theme(self, theme):
+        """Apply the selected theme to the application"""
+        # This is a basic implementation - you can expand this
+        if theme == "Dark":
+            self.root.configure(bg='#2b2b2b')
+            # Apply dark theme to other elements
+        elif theme == "Light":
+            self.root.configure(bg='white')
+            # Apply light theme to other elements
+        # Add more theme implementations as needed
+    def update_fonts(self):
+        """Update fonts for all widgets based on current preferences"""
+        try:
+            print(f"Updating fonts to: {self.preferred_font} {self.preferred_size}")  # Debug
+        
+            # Update all labels with their specific sizes and weights
+            label_configs = [
+                (self.label1, 16, "bold"),
+                (self.label2, 12, "normal"),
+                (self.folder_label, 10, "normal"),
+                (self.status_label, 12, "normal"),
+            ]
+        
+            for label, size, weight in label_configs:
+                if label and label.winfo_exists():
+                    if weight == "normal":
+                        label.config(font=(self.preferred_font, size))
+                    else:
+                        label.config(font=(self.preferred_font, size, weight))
+        
+            # Update buttons
+            button_configs = [
+                (self.submit_button, 13, "bold"),
+                (self.play_music_button, 13, "bold"),
+                (self.quit_button, 13, "bold"),
+                (self.select_folder_button, 12, "bold"),
+            ]
+        
+            for button, size, weight in button_configs:
+                if button and button.winfo_exists():
+                    button.config(font=(self.preferred_font, size, weight))
+        
+            # Update entry field
+            if self.entry.winfo_exists():
+                self.entry.config(font=(self.preferred_font, 13, "italic"))
+        
+            # Update comboboxes
+            if self.combo_scrape_options.winfo_exists():
+                self.combo_scrape_options.config(font=(self.preferred_font, 13, "bold"))
+        
+            if self.combo_website_options.winfo_exists():
+                self.combo_website_options.config(font=(self.preferred_font, 13, "bold"))
+        
+            # Update results text
+            if self.results_text.winfo_exists():
+                self.results_text.config(font=(self.preferred_font, 11))
+        
+            print(f"Fonts successfully updated to: {self.preferred_font} {self.preferred_size}")
+        
+        except Exception as e:
+            print(f"Error updating fonts: {e}")
 
 if __name__ == "__main__":
     GUI()
