@@ -191,12 +191,10 @@ class OptionsWindow:
         ).pack(anchor='w', pady=(0, 5))
     
         browser_options = [
-        "Chrome", 
-            "Firefox", 
-            "Edge", 
+            "Chrome", 
+            "Firefox",
+            "Microsoft Edge",
             "Safari",
-            "Opera",
-            "Brave"
         ]
     
         self.browser_combobox = ttk.Combobox(

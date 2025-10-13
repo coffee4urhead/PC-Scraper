@@ -60,19 +60,56 @@ class PlaywrightBaseScraper(ABC):
         # Browser cleanup happens in _scrape_products finally block
 
     def _launch_browser(self):
-        """Launch browser in the scraper's own thread"""
+        """Launch browser in the scraper's own thread with better error handling"""
         try:
             print("DEBUG: Launching browser in scraper thread...")
+            pref_browser = getattr(self, 'preferred_browser', 'Chrome').lower()
             self.playwright = sync_playwright().start()
-            self.driver = self.playwright.chromium.launch(
-                headless=False,  # Visible for debugging
-                timeout=30000
-            )
-            print(f"DEBUG: Browser launched in scraper thread: {self.driver.is_connected()}")
+        
+            launch_options = {
+                'headless': False,
+                'timeout': 30000,
+                'args': ['--start-maximized']
+            }
+        
+            browser_map = {
+                'chrome': lambda: self.playwright.chromium.launch(channel="chrome", **launch_options),
+                'firefox': lambda: self.playwright.firefox.launch(**launch_options),
+                'microsoft edge': lambda: self.playwright.chromium.launch(channel="msedge", **launch_options),
+                'edge': lambda: self.playwright.chromium.launch(channel="msedge", **launch_options),
+                'safari': lambda: self.playwright.webkit.launch(**launch_options),
+                'webkit': lambda: self.playwright.webkit.launch(**launch_options)
+            }
+        
+            # Normalize browser name
+            browser_key = pref_browser.lower()
+            if browser_key not in browser_map:
+                print(f"DEBUG: Browser '{pref_browser}' not found, falling back to chromium")
+                browser_key = 'chrome'
+        
+            launcher = browser_map[browser_key]
+            self.driver = launcher()
+        
+            print(f"DEBUG: {pref_browser} launched successfully: {self.driver.is_connected()}")
             return True
+        
         except Exception as e:
-            print(f"DEBUG: Browser launch failed in scraper thread: {e}")
-            return False
+            print(f"ERROR: Failed to launch {pref_browser}: {e}")
+        
+            # Fallback to Chromium
+            try:
+                print("DEBUG: Attempting fallback to Chromium...")
+                if hasattr(self, 'playwright') and self.playwright:
+                    self.driver = self.playwright.chromium.launch(
+                        headless=False, 
+                        timeout=30000
+                    )
+                    print("DEBUG: Fallback to Chromium successful")
+                    return True
+            except Exception as fallback_error:
+                print(f"DEBUG: Fallback also failed: {fallback_error}")
+
+        return False
 
     def _close_browser(self):
         """Close browser in the scraper's own thread"""
