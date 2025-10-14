@@ -3,6 +3,7 @@ venv/
 .venv/
 .env/
 ENV/
+.env
 
 # Python cache and build files
 __pycache__/

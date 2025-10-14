@@ -12,6 +12,8 @@ from scraper import AmazonScraper
 from desktop_bg_scraper import DesktopScraper
 from plasico_scraper import PlasicoScraper
 from currency_converter import convert_currency
+# TODO: test PlasicoScraper more thoroughly
+# TODO: handle Ardes.bg results not found 
 
 from windows.help_window import HelpWindow
 from options_window import OptionsWindow
