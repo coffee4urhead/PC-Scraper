@@ -26,13 +26,10 @@ class JarComputersScraper(PlaywrightBaseScraper):
         print(f"DEBUG: Extracting product links from: {page_url}")
 
         try:
-            # Navigate to the search page
             page.goto(page_url, wait_until='domcontentloaded', timeout=30000)
-            
-            # Wait for product list to load
+
             page.wait_for_selector('ol#product_list', timeout=10000)
             
-            # Get all product elements
             product_elements = page.query_selector_all('ol#product_list li[class*="sProduct"]')
             print(f"DEBUG: Found {len(product_elements)} product elements")
             
@@ -40,25 +37,20 @@ class JarComputersScraper(PlaywrightBaseScraper):
                 if self.stop_event.is_set():
                     break
 
-                # Check for sponsored products
                 sponsored = product.query_selector('span:has-text("Sponsored")')
                 if sponsored:
                     continue
 
-                # Get title for exclusion check
                 title_element = product.query_selector('span.short_title.fn')
                 title = title_element.inner_text().strip() if title_element else ""
-                
-                # Check if product should be excluded
+
                 if any(word.lower() in title.lower() for word in self.exclude_keywords):
                     continue
 
-                # Check availability
                 unavailable = product.query_selector('span.avail-old')
                 if unavailable:
                     continue
 
-                # Get product link
                 link_element = product.query_selector('a[href]')
                 if link_element:
                     href = link_element.get_attribute('href')
@@ -81,17 +73,13 @@ class JarComputersScraper(PlaywrightBaseScraper):
         print(f"DEBUG: Parsing JarComputers product: {product_url}")
         
         try:
-            # Navigate to product page
             page.goto(product_url, wait_until='domcontentloaded', timeout=30000)
             
-            # Wait for key elements
             page.wait_for_selector('div#product_name', timeout=10000)
             
-            # Extract title
             title_element = page.query_selector('div#product_name h1')
             title = title_element.inner_text().strip() if title_element else "N/A"
             
-            # Extract price
             price_element = page.query_selector('div.price')
             price = price_element.inner_text().strip().replace("лв", "").strip() if price_element else "N/A"
             
@@ -102,8 +90,7 @@ class JarComputersScraper(PlaywrightBaseScraper):
             }
 
             print(f"DEBUG: Extracted JarComputers product: {title} - {price}")
-
-            # Extract technical specifications
+            
             tech_table = page.query_selector('ul.pprop')
             if tech_table:
                 list_items = tech_table.query_selector_all('li')

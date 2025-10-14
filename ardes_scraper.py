@@ -21,21 +21,17 @@ class ArdesScraper(PlaywrightBaseScraper):
         print(f"DEBUG: Extracting product links from: {page_url}")
 
         try:
-            # Navigate to the search page
             page.goto(page_url, wait_until='domcontentloaded', timeout=30000)
             
-            # Wait for products to load
-            page.wait_for_selector('div.product-head', timeout=10000)
+            page.wait_for_selector('div#ajax-content', timeout=10000)
             
-            # Get all product elements
-            product_elements = page.query_selector_all('div.product-head')
+            product_elements = page.query_selector_all('div#ajax-content')
             print(f"DEBUG: Found {len(product_elements)} product elements")
             
             for product in product_elements:
                 if self.stop_event.is_set():
                     break
 
-                # Find the product link
                 link_element = product.query_selector('a[href^="/products/"]')
                 if link_element:
                     href = link_element.get_attribute('href')
@@ -57,17 +53,13 @@ class ArdesScraper(PlaywrightBaseScraper):
         print(f"DEBUG: Parsing Ardes product: {product_url}")
         
         try:
-            # Navigate to product page
             page.goto(product_url, wait_until='domcontentloaded', timeout=30000)
-            
-            # Wait for key elements
+
             page.wait_for_selector('div.product-title', timeout=10000)
             
-            # Extract title
             title_element = page.query_selector('div.product-title h1')
             title = title_element.inner_text().strip() if title_element else "No Title"
             
-            # Extract price
             price_whole = page.query_selector('span#price-tag')
             price_fraction = page.query_selector('sup.after-decimal')
             
@@ -84,7 +76,6 @@ class ArdesScraper(PlaywrightBaseScraper):
                 'url': product_url
             }
 
-            # Extract technical specifications
             ul_list = page.query_selector('ul.tech-specs-list')
             if ul_list:
                 list_items = ul_list.query_selector_all('li')

@@ -36,7 +36,6 @@ class OptionsWindow:
         )
         title_label.pack(pady=(0, 20))
 
-        ###
         font_frame = tk.LabelFrame(
             main_frame, 
             text="Font Settings", 
@@ -61,7 +60,7 @@ class OptionsWindow:
             width=30
         )
         self.font_family_combobox.pack(fill=tk.X, pady=(0, 10))
-        # Set default value using set() method
+
         current_font = getattr(self.parent, 'preferred_font', 'Arial')
         self.font_family_combobox.set(current_font)
 
@@ -80,7 +79,6 @@ class OptionsWindow:
             width=30
         )
         self.font_size_combobox.pack(fill=tk.X, pady=(0, 10))
-        # Set default value using set() method
         current_size = str(getattr(self.parent, 'preferred_size', 12))
         self.font_size_combobox.set(current_size)
 
@@ -112,7 +110,6 @@ class OptionsWindow:
         )
         self.currency_combobox.pack(fill=tk.X, pady=(0, 10))
     
-        # Set default currency
         current_currency_text = next(
             (text for text, code in self.currency_options if code == self.parent.preferred_currency),
             "Bulgarian Lev (BGN)"
@@ -205,7 +202,7 @@ class OptionsWindow:
             width=30
         )
         self.browser_combobox.pack(fill=tk.X, pady=(0, 10))
-        # Set default browser
+
         current_browser = getattr(self.parent, 'preferred_browser', 'Chrome')
         self.browser_combobox.set(current_browser)
     
@@ -242,7 +239,7 @@ class OptionsWindow:
             width=30
         )
         self.theme_combobox.pack(fill=tk.X, pady=(0, 10))
-        # Set default theme
+
         current_theme = getattr(self.parent, 'preferred_theme', 'Light')
         self.theme_combobox.set(current_theme)
     
@@ -296,14 +293,11 @@ class OptionsWindow:
             selected_browser = self.browser_combobox.get()
             selected_theme = self.theme_combobox.get()
         
-            # Update parent with ALL settings including font preferences
             self.parent.update_options(selected_text, format_choice, custom_format, selected_browser, selected_theme)
         
-            # Update font preferences in parent
             self.parent.preferred_font = selected_font
             self.parent.preferred_size = selected_size
         
-            # CALL THE UPDATE FONTS METHOD HERE
             if hasattr(self.parent, 'update_fonts'):
                 self.parent.update_fonts()
                 print("Fonts updated successfully")

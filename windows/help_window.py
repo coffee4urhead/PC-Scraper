@@ -7,8 +7,7 @@ class HelpWindow:
         self.window = tk.Toplevel(parent.root)
         self.window.title("Quick Start Guide")
         self.window.geometry("600x500")
-        
-        # Use parent's font preferences
+
         self.preferred_font = parent.preferred_font
         self.preferred_size = parent.preferred_size
         
@@ -17,8 +16,7 @@ class HelpWindow:
     def _setup_gui(self):
         main_frame = tk.Frame(self.window, padx=20, pady=20)
         main_frame.pack(fill=tk.BOTH, expand=True)
-        
-        # Title with current font
+
         title_label = tk.Label(
             main_frame, 
             text="Quick Start Guide", 
@@ -26,7 +24,6 @@ class HelpWindow:
         )
         title_label.pack(pady=(0, 20))
         
-        # Help text with current font
         help_text = """
 1. SELECT COMPONENT TYPE
    - Choose the PC component you want to scrape from the dropdown (GPU, CPU, etc.)
@@ -60,7 +57,7 @@ Tips:
             pady=10
         )
         self.text_widget.insert(1.0, help_text)
-        self.text_widget.config(state=tk.DISABLED)  # Make read-only
+        self.text_widget.config(state=tk.DISABLED)  
 
         self.scrollbar = ttk.Scrollbar(main_frame, orient=tk.VERTICAL, command=self.text_widget.yview)
         self.text_widget.config(yscrollcommand=self.scrollbar.set)
@@ -68,7 +65,6 @@ Tips:
         self.text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        # Close button with current font
         self.close_btn = tk.Button(
             main_frame, 
             text="Close", 
@@ -82,7 +78,6 @@ Tips:
         self.preferred_font = font
         self.preferred_size = size
         
-        # Update individual widgets (safer approach)
         try:
             if hasattr(self, 'title_label') and self.title_label.winfo_exists():
                 self.title_label.config(font=(font, 16, "bold"))
@@ -101,16 +96,14 @@ Tips:
         try:
             if isinstance(widget, (tk.Label, tk.Button)):
                 current_font = widget.cget('font')
-                # Preserve font weight if it was bold
                 if 'bold' in str(current_font):
                     widget.config(font=(self.preferred_font, self.preferred_size, "bold"))
                 else:
                     widget.config(font=(self.preferred_font, self.preferred_size))
             elif isinstance(widget, tk.Text):
                 widget.config(font=(self.preferred_font, self.preferred_size))
-        
-            # Recursively update child widgets
+
             for child in widget.winfo_children():
              self._update_widget_fonts(child)
         except:
-            pass  # Skip widgets that don't support font changes
+            pass  

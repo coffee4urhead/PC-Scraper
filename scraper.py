@@ -37,13 +37,10 @@ class AmazonScraper(PlaywrightBaseScraper):
         print(f"DEBUG: Extracting product links from Amazon: {page_url}")
 
         try:
-            # Navigate to the search page
             page.goto(page_url, wait_until='domcontentloaded', timeout=30000)
             
-            # Wait for search results to load
             page.wait_for_selector('div[data-component-type="s-search-result"]', timeout=15000)
             
-            # Get all product elements
             product_elements = page.query_selector_all('div[data-component-type="s-search-result"]')
             print(f"DEBUG: Found {len(product_elements)} Amazon product elements")
             
@@ -51,12 +48,10 @@ class AmazonScraper(PlaywrightBaseScraper):
                 if self.stop_event.is_set():
                     break
 
-                # Check for sponsored products
                 sponsored = product.query_selector('span:has-text("Sponsored")')
                 if sponsored:
                     continue
 
-                # Get the product link
                 link_element = product.query_selector('a.a-link-normal.s-no-outline[href]')
                 if link_element:
                     href = link_element.get_attribute('href')
@@ -66,7 +61,6 @@ class AmazonScraper(PlaywrightBaseScraper):
                         if '/dp/' in clean_url and clean_url not in product_links:
                             product_links.append(clean_url)
                             
-                            # Get title for debugging
                             title_element = product.query_selector('h2 a span')
                             title = title_element.inner_text().strip() if title_element else "Unknown"
                             print(f"DEBUG: Added Amazon product: {title}")
@@ -76,7 +70,6 @@ class AmazonScraper(PlaywrightBaseScraper):
 
         except Exception as e:
             print(f"DEBUG: Error extracting product links from Amazon: {e}")
-            # Take screenshot for debugging
             try:
                 page.screenshot(path="amazon_search_error.png")
             except:
@@ -88,20 +81,15 @@ class AmazonScraper(PlaywrightBaseScraper):
         print(f"DEBUG: Parsing Amazon product: {product_url}")
         
         try:
-            # Navigate to product page
             page.goto(product_url, wait_until='domcontentloaded', timeout=30000)
             
-            # Wait for product title to load
             page.wait_for_selector('span#productTitle', timeout=15000)
             
-            # Extract title
             title_element = page.query_selector('span#productTitle')
             title = title_element.inner_text().strip() if title_element else "No Title"
             
-            # Extract price - Amazon has multiple price locations
             price = "N/A"
             
-            # Try main price first
             price_whole = page.query_selector('span.a-price-whole')
             price_fraction = page.query_selector('span.a-price-fraction')
             
@@ -110,7 +98,6 @@ class AmazonScraper(PlaywrightBaseScraper):
                 price_fraction_text = price_fraction.inner_text().strip()
                 price = f"${price_whole_text}{price_fraction_text}"
             else:
-                # Try alternative price location
                 price_element = page.query_selector('span.a-price .a-offscreen')
                 if price_element:
                     price = price_element.inner_text().strip()
@@ -123,10 +110,8 @@ class AmazonScraper(PlaywrightBaseScraper):
 
             print(f"DEBUG: Extracted Amazon product: {title} - {price}")
 
-            # Extract technical specifications from product table
             tech_table = page.query_selector('table.a-normal.a-spacing-micro')
             if not tech_table:
-                # Try alternative table selectors
                 tech_table = page.query_selector('table.prodDetTable')
                 if not tech_table:
                     tech_table = page.query_selector('div#productDetails_db_sections')
@@ -145,7 +130,6 @@ class AmazonScraper(PlaywrightBaseScraper):
                         print(f"DEBUG: Skipping invalid Amazon property: {str(e)}")
                         continue
 
-            # Also try to get product details from feature bullets
             feature_bullets = page.query_selector('div#feature-bullets')
             if feature_bullets:
                 bullets = feature_bullets.query_selector_all('li span.a-list-item')
@@ -156,7 +140,6 @@ class AmazonScraper(PlaywrightBaseScraper):
 
         except Exception as e:
             print(f"DEBUG: Error parsing Amazon product page: {e}")
-            # Take screenshot for debugging
             try:
                 page.screenshot(path="amazon_product_error.png")
             except:

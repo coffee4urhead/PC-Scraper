@@ -10,6 +10,7 @@ from ardes_scraper import ArdesScraper
 from jar_computers_scraper import JarComputersScraper
 from scraper import AmazonScraper
 from desktop_bg_scraper import DesktopScraper
+from plasico_scraper import PlasicoScraper
 from currency_converter import convert_currency
 
 from windows.help_window import HelpWindow
@@ -60,7 +61,6 @@ class GUI:
         canvas.pack(fill="both", expand=True)
         canvas.create_image(0, 0, image=self.background_image, anchor="nw")
 
-        # Store references to ALL widgets
         self.label1 = tk.Label(self.root, text="GPU Web Scraper Program",
                           font=(self.preferred_font, 16, "bold"), bg='white')
         canvas.create_window(600, 50, anchor="center", window=self.label1)
@@ -85,7 +85,7 @@ class GUI:
         self.combo_scrape_options.bind("<<ComboboxSelected>>", self.on_selection)
         canvas.create_window(1050, 120, anchor="center", window=self.combo_scrape_options)
 
-        options = ['Ardes.bg', 'jarcomputers.com', 'Desktop.bg', 'Amazon.com', 'Amazon.de', 'Amazon.uk']
+        options = ['Ardes.bg', 'Plasico.bg', 'jarcomputers.com', 'Desktop.bg', 'Amazon.com', 'Amazon.de', 'Amazon.uk']
 
         self.combo_website_options = ttk.Combobox(self.root, width=20, font=(self.preferred_font, 13, "bold"),
                                              values=options)
@@ -93,7 +93,6 @@ class GUI:
         self.combo_website_options.bind("<<ComboboxSelected>>", self.on_selection_instantiate)
         canvas.create_window(1050, 150, anchor="center", window=self.combo_website_options)
 
-        # Store reference to quit_button
         self.quit_button = tk.Button(self.root, text="Quit", command=self.on_closing,
                                 width=7, font=(self.preferred_font, 13, "bold"),
                                 height=1, cursor="hand2", padx=10, pady=5)
@@ -148,7 +147,6 @@ class GUI:
         new_window.title(title)
         new_window.geometry(size)
     
-        # Apply current font to the window (this will be inherited by child widgets)
         new_window.option_add('*Font', (self.preferred_font, self.preferred_size))
     
         return new_window
@@ -229,7 +227,6 @@ class GUI:
         self.currency_format = custom_format if format_choice == "custom" else "0.00"
         self.currency_symbol = self._get_currency_symbol(currency_code)
     
-        # Update browser and theme if provided
         if browser:
             self.preferred_browser = browser
         if theme:
@@ -262,18 +259,19 @@ class GUI:
         print(f"DEBUG: Initializing scraper for {self.selected_website}")
     
         try:
-            # Create scraper WITHOUT passing any browser/driver
             if self.selected_website == "Amazon.com":
-                self.scraper = AmazonScraper(self.update_gui)  # No driver parameter
+                self.scraper = AmazonScraper(self.update_gui)  
             elif self.selected_website == "Ardes.bg":
-                self.scraper = ArdesScraper(self.update_gui)   # No driver parameter
+                self.scraper = ArdesScraper(self.update_gui)   
             elif self.selected_website == 'jarcomputers.com':
-                self.scraper = JarComputersScraper(self.update_gui)  # No driver parameter
+                self.scraper = JarComputersScraper(self.update_gui)  
             elif self.selected_website == "Desktop.bg":
-                self.scraper = DesktopScraper(self.update_gui)  # No driver parameter
+                self.scraper = DesktopScraper(self.update_gui)
+            elif self.selected_website == "Plasico.bg":
+                self.scraper = PlasicoScraper(self.update_gui)
             
             print(f"DEBUG: Scraper created successfully for {self.selected_website}")
-            # Don't check self.scraper.driver - it will be None until scraping starts
+           
         
         except Exception as e:
             self.status_label.config(text=f"Scraper init failed: {str(e)}", foreground="red")
@@ -414,12 +412,10 @@ class GUI:
         """Proper cleanup when closing the application"""
         print("DEBUG: Starting application cleanup...")
     
-        # Stop any active scraping first
         if self.scraper:
             print("DEBUG: Stopping scraper...")
             self.scraper.stop_scraping()
-    
-        # No browser cleanup needed - each scraper manages its own
+
         print("DEBUG: Cleanup complete, destroying window...")
         self.root.destroy()
 
@@ -433,25 +429,19 @@ class GUI:
         self.preferred_theme = theme
         print(f"Theme preference updated to: {theme}")
     
-        # You can implement theme changes here
         self._apply_theme(theme)
 
     def _apply_theme(self, theme):
         """Apply the selected theme to the application"""
-        # This is a basic implementation - you can expand this
         if theme == "Dark":
             self.root.configure(bg='#2b2b2b')
-            # Apply dark theme to other elements
         elif theme == "Light":
             self.root.configure(bg='white')
-            # Apply light theme to other elements
-        # Add more theme implementations as needed
     def update_fonts(self):
         """Update fonts for all widgets based on current preferences"""
         try:
-            print(f"Updating fonts to: {self.preferred_font} {self.preferred_size}")  # Debug
+            print(f"Updating fonts to: {self.preferred_font} {self.preferred_size}") 
         
-            # Update all labels with their specific sizes and weights
             label_configs = [
                 (self.label1, 16, "bold"),
                 (self.label2, 12, "normal"),
@@ -466,7 +456,6 @@ class GUI:
                     else:
                         label.config(font=(self.preferred_font, size, weight))
         
-            # Update buttons
             button_configs = [
                 (self.submit_button, 13, "bold"),
                 (self.play_music_button, 13, "bold"),
@@ -478,18 +467,15 @@ class GUI:
                 if button and button.winfo_exists():
                     button.config(font=(self.preferred_font, size, weight))
         
-            # Update entry field
             if self.entry.winfo_exists():
                 self.entry.config(font=(self.preferred_font, 13, "italic"))
         
-            # Update comboboxes
             if self.combo_scrape_options.winfo_exists():
                 self.combo_scrape_options.config(font=(self.preferred_font, 13, "bold"))
         
             if self.combo_website_options.winfo_exists():
                 self.combo_website_options.config(font=(self.preferred_font, 13, "bold"))
-        
-            # Update results text
+
             if self.results_text.winfo_exists():
                 self.results_text.config(font=(self.preferred_font, 11))
         

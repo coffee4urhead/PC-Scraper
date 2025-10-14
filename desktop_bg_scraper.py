@@ -26,15 +26,12 @@ class DesktopScraper(PlaywrightBaseScraper):
         print(f"DEBUG: _extract_product_links called for: {page_url}")
 
         try:
-            # Navigate to the search page first
             print(f"DEBUG: Navigating to search page...")
             page.goto(page_url, wait_until='domcontentloaded', timeout=30000)
             
-            # Wait for the products list to load
             print("DEBUG: Waiting for products list...")
             page.wait_for_selector('ul.products', timeout=10000)
             
-            # Get all product list items
             product_elements = page.query_selector_all('ul.products li[id^="product_"]')
             print(f"DEBUG: Found {len(product_elements)} product elements")
             
@@ -42,7 +39,6 @@ class DesktopScraper(PlaywrightBaseScraper):
                 if self.stop_event.is_set():
                     break
 
-                # Find the link within the product
                 link_element = product.query_selector('a[href]')
                 if link_element:
                     href = link_element.get_attribute('href')
@@ -58,7 +54,6 @@ class DesktopScraper(PlaywrightBaseScraper):
 
         except Exception as e:
             print(f"DEBUG: Error extracting product links: {e}")
-            # Take screenshot for debugging
             try:
                 page.screenshot(path=f"debug_error_{page_url.split('/')[-1]}.png")
             except:
@@ -70,17 +65,13 @@ class DesktopScraper(PlaywrightBaseScraper):
         print(f"DEBUG: _parse_product_page called for: {product_url}")
         
         try:
-            # Navigate to the product page
             page.goto(product_url, wait_until='domcontentloaded', timeout=30000)
             
-            # Wait for key elements to load
             page.wait_for_selector('div#content', timeout=10000)
             
-            # Extract title
             title_element = page.query_selector('div#content h1[itemprop="name"]')
             title = title_element.inner_text().strip() if title_element else "N/A"
             
-            # Extract price
             price_element = page.query_selector('span[itemprop="price"]')
             price = price_element.inner_text().strip().replace("лв", "").strip() if price_element else "N/A"
             
@@ -92,7 +83,6 @@ class DesktopScraper(PlaywrightBaseScraper):
 
             print(f"DEBUG: Extracted product: {title} - {price}")
 
-            # Extract technical specifications from the table
             tech_table = page.query_selector('table.product-characteristics')
             if tech_table:
                 rows = tech_table.query_selector_all('tr')

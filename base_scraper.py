@@ -19,11 +19,9 @@ class PlaywrightBaseScraper(ABC):
         self.max_pages = 10
         self.current_progress = 0
         
-        # Each scraper manages its OWN browser
         self.driver = None
         self.playwright = None
         
-        # Don't accept external driver - create our own
         if driver is not None:
             print("WARNING: External driver passed - scraper should manage its own browser")
 
@@ -56,9 +54,8 @@ class PlaywrightBaseScraper(ABC):
         """Stop scraping and cleanup"""
         self.stop_event.set()
         if self.scraping_thread:
-            self.scraping_thread.join(timeout=5.0)  # Give time for cleanup
-        # Browser cleanup happens in _scrape_products finally block
-
+            self.scraping_thread.join(timeout=5.0) 
+    
     def _launch_browser(self):
         """Launch browser in the scraper's own thread with better error handling"""
         try:
@@ -80,8 +77,7 @@ class PlaywrightBaseScraper(ABC):
                 'safari': lambda: self.playwright.webkit.launch(**launch_options),
                 'webkit': lambda: self.playwright.webkit.launch(**launch_options)
             }
-        
-            # Normalize browser name
+
             browser_key = pref_browser.lower()
             if browser_key not in browser_map:
                 print(f"DEBUG: Browser '{pref_browser}' not found, falling back to chromium")
@@ -95,8 +91,7 @@ class PlaywrightBaseScraper(ABC):
         
         except Exception as e:
             print(f"ERROR: Failed to launch {pref_browser}: {e}")
-        
-            # Fallback to Chromium
+
             try:
                 print("DEBUG: Attempting fallback to Chromium...")
                 if hasattr(self, 'playwright') and self.playwright:
@@ -127,13 +122,11 @@ class PlaywrightBaseScraper(ABC):
     def _scrape_products(self, search_term, max_pages):
         """Main scraping logic - ALL in scraper thread"""
         try:
-            # Launch browser in THIS thread
             if not self._launch_browser():
                 error_msg = "Failed to launch browser in scraper thread"
                 self._update_gui({'type': 'error', 'message': error_msg})
                 return
-            
-            # Validate browser connection
+
             if not self.driver.is_connected():
                 error_msg = "Browser not connected in scraper thread"
                 self._update_gui({'type': 'error', 'message': error_msg})
@@ -149,7 +142,6 @@ class PlaywrightBaseScraper(ABC):
                     print("DEBUG: Scraping stopped by stop_event")
                     break
 
-                # Check browser connection
                 if not self.driver.is_connected():
                     error_msg = "Browser disconnected during scraping."
                     self._update_gui({'type': 'error', 'message': error_msg})
@@ -159,8 +151,7 @@ class PlaywrightBaseScraper(ABC):
 
                 page_url = self._construct_page_url(base_url, search_term, page_num)
                 print(f"DEBUG: Processing page {page_num}: {page_url}")
-                
-                # Create a new page for each search page
+
                 search_page = self.driver.new_page()
                 try:
                     product_links = self._extract_product_links(search_page, page_url)
@@ -174,7 +165,6 @@ class PlaywrightBaseScraper(ABC):
                         if self.stop_event.is_set():
                             break
 
-                        # Check connection before each product
                         if not self.driver.is_connected():
                             error_msg = "Browser disconnected during product processing."
                             self._update_gui({'type': 'error', 'message': error_msg})
@@ -185,7 +175,6 @@ class PlaywrightBaseScraper(ABC):
                             total_pages
                         )
 
-                        # Create a new page for each product
                         product_page = self.driver.new_page()
                         try:
                             print(f"DEBUG: Scraping product {i+1}/{len(product_links)}: {product_url}")
@@ -213,7 +202,6 @@ class PlaywrightBaseScraper(ABC):
             print(f"DEBUG: Scraping error: {str(e)}")
             self._update_gui({'type': 'error', 'message': str(e)})
         finally:
-            # Always close browser in the same thread
             self._close_browser()
             self.stop_event.set()
 
