@@ -1,6 +1,6 @@
 import re
 from urllib.parse import urljoin, quote
-from base_scraper import PlaywrightBaseScraper
+from .base_scraper import PlaywrightBaseScraper
 
 class AmazonScraper(PlaywrightBaseScraper):
     def __init__(self, gui_callback=None):

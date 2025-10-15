@@ -19,13 +19,33 @@ class TableMaker:
         worksheet = workbook.add_worksheet(f"{self.pc_part_selected} List of scraped data")
 
         header_format = workbook.add_format({
-            'bold': True, 'font_color': 'white', 'bg_color': '#1F497D',
-            'align': 'center', 'border': 1
+            'bold': True, 
+            'font_color': 'white', 
+            'bg_color': '#1F497D',
+            'align': 'center', 
+            'valign': 'vcenter',
+            'border': 1,
+            'text_wrap': True
         })
         
         currency_format = workbook.add_format({
             'num_format': f'"{self.currency_symbol}"#,##0.00',
-            'align': 'right'
+            'align': 'right',
+            'valign': 'vcenter'
+        })
+        
+        text_format = workbook.add_format({
+            'text_wrap': True,
+            'valign': 'top',
+            'border': 1
+        })
+        
+        url_format = workbook.add_format({
+            'text_wrap': True,
+            'valign': 'top',
+            'font_color': 'blue',
+            'underline': 1,
+            'border': 1
         })
 
         all_fields = set()
@@ -36,18 +56,19 @@ class TableMaker:
         dynamic_columns = [field for field in sorted(all_fields)
                            if field not in fixed_columns]
         headers = ["Product Name", "Price", "URL"] + dynamic_columns
+        
         for col, header in enumerate(headers):
             worksheet.write(0, col, header, header_format)
 
         for row, product in enumerate(self.data, start=1):
-            worksheet.write(row, 0, product.get("title", "N/A"))
+            # Product Name with text wrapping
+            worksheet.write(row, 0, product.get("title", "N/A"), text_format)
 
             price_value = product.get("price", "N/A")
-            
             if isinstance(price_value, (int, float)):
                 worksheet.write(row, 1, price_value, currency_format)
             elif price_value == "N/A":
-                worksheet.write(row, 1, "N/A")
+                worksheet.write(row, 1, "N/A", text_format)
             else:
                 price_str = str(price_value).split("/")[0].strip()
                 for symbol in ["лв", "$", "€", "£", "¥", "₩", "R$", "₹"]:
@@ -56,20 +77,54 @@ class TableMaker:
                     price_num = float(price_str)
                     worksheet.write(row, 1, price_num, currency_format)
                 except ValueError:
-                    worksheet.write(row, 1, str(price_value))
+                    worksheet.write(row, 1, str(price_value), text_format)
             
-            worksheet.write(row, 2, product.get("url", "N/A"))
+            worksheet.write(row, 2, product.get("url", "N/A"), url_format)
 
             for col, field in enumerate(dynamic_columns, start=3):
-                worksheet.write(row, col, product.get(field, "N/A"))
+                value = product.get(field, "N/A")
+                worksheet.write(row, col, str(value), text_format)
 
         for col, header in enumerate(headers):
             max_len = len(header)
-            for row in range(len(self.data)):
-                value = str(product.get(header.lower().replace(" ", "_"), "N/A"))
-                if len(value) > max_len:
-                    max_len = len(value)
-            worksheet.set_column(col, col, min(max_len + 2, 50))
+            for row_idx in range(len(self.data)):
+                if col == 0:  
+                    value = str(self.data[row_idx].get("title", "N/A"))
+                elif col == 1: 
+                    value = str(self.data[row_idx].get("price", "N/A"))
+                elif col == 2:  
+                    value = str(self.data[row_idx].get("url", "N/A"))
+                else: 
+                    field_name = dynamic_columns[col - 3]
+                    value = str(self.data[row_idx].get(field_name, "N/A"))
+                
+                # Count line breaks for better width calculation
+                line_count = value.count('\n') + 1
+                avg_line_length = len(value) / line_count if line_count > 0 else len(value)
+                
+                # Adjust width based on content
+                adjusted_length = min(max(avg_line_length, len(header)), 30)
+                if adjusted_length > max_len:
+                    max_len = adjusted_length
+            
+            # Set column width - wider for wrapped text
+            base_width = min(max_len + 2, 50)
+            if col == 0:  # Product Name - usually needs more space
+                worksheet.set_column(col, col, max(base_width, 20))
+            elif col == 2:  # URL - can be very long
+                worksheet.set_column(col, col, max(base_width, 40))
+            else:
+                worksheet.set_column(col, col, base_width)
+
+        # Set row heights for better visibility of wrapped text
+        worksheet.set_default_row(20)  # Default row height
+        
+        # Adjust specific rows if they have lots of content
+        for row_idx in range(1, len(self.data) + 1):
+            # You can adjust this logic based on your content
+            product_name = str(self.data[row_idx-1].get("title", ""))
+            if len(product_name) > 50:  # If product name is long, increase row height
+                worksheet.set_row(row_idx, 30)
 
         self._create_color_formatting(workbook, worksheet, self.data, self.pc_part_selected)
 
@@ -88,10 +143,26 @@ class TableMaker:
         print(f"File saved: {self.filename}")
 
     def _create_color_formatting(self, workbook, worksheet, data, part_selected):
-        format_tier1 = workbook.add_format({'bg_color': '#D9F501'})  
-        format_tier2 = workbook.add_format({'bg_color': '#F5EF00'})  
-        format_tier3 = workbook.add_format({'bg_color': '#F58600'})  
-        format_tier4 = workbook.add_format({'bg_color': '#F2320C'}) 
+        format_tier1 = workbook.add_format({
+            'bg_color': '#D9F501',
+            'text_wrap': True,
+            'valign': 'top'
+        })  
+        format_tier2 = workbook.add_format({
+            'bg_color': '#F5EF00',
+            'text_wrap': True,
+            'valign': 'top'
+        })  
+        format_tier3 = workbook.add_format({
+            'bg_color': '#F58600',
+            'text_wrap': True,
+            'valign': 'top'
+        })  
+        format_tier4 = workbook.add_format({
+            'bg_color': '#F2320C',
+            'text_wrap': True,
+            'valign': 'top'
+        }) 
 
         price_ranges = {
             "Motherboard": [100, 200, 400],

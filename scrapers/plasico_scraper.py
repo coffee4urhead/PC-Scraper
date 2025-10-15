@@ -1,6 +1,6 @@
 import re
 from urllib.parse import quote, urljoin
-from base_scraper import PlaywrightBaseScraper
+from .base_scraper import PlaywrightBaseScraper
 
 class PlasicoScraper(PlaywrightBaseScraper):
     def __init__(self, update_gui_callback=None):
@@ -121,24 +121,3 @@ class PlasicoScraper(PlaywrightBaseScraper):
         except Exception as e:
             print(f"DEBUG: Error parsing Plasico product page: {e}")
             return None
-        
-    def _extract_and_convert_price(self, price_text):
-        """Extract the first BGN price and convert to float immediately"""
-        if price_text == "N/A":
-            return "N/A"
-    
-        try:
-            first_part = price_text.split('/')[0].strip()
-            price_match = re.search(r'(\d+[\.,]?\d*)', first_part)
-            if price_match:
-                price_str = price_match.group(1).replace(',', '.')
-                price_float = float(price_str)
-                print(f"DEBUG: Converted price '{price_text}' -> {price_float}")
-                return price_float
-            else:
-                print(f"DEBUG: No valid price found in: {price_text}")
-                return "N/A"
-            
-        except Exception as e:
-            print(f"DEBUG: Error converting price '{price_text}': {e}")
-            return "N/A"
