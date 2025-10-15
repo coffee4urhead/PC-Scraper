@@ -12,6 +12,7 @@ from scrapers.jar_computers_scraper import JarComputersScraper
 from scrapers.desktop_bg_scraper import DesktopScraper
 from scrapers.plasico_scraper import PlasicoScraper
 from scrapers.pic_bg_scraper import PICBgScraper
+from scrapers.optimal_computers_scraper import OptimalComputersScraper
 
 from currency_converter import convert_currency
 
@@ -90,7 +91,7 @@ class GUI:
         self.combo_scrape_options.bind("<<ComboboxSelected>>", self.on_selection)
         canvas.create_window(1050, 120, anchor="center", window=self.combo_scrape_options)
 
-        options = ['Ardes.bg', 'Plasico.bg', 'PIC.bg', 'jarcomputers.com', 'Desktop.bg', 'Amazon.com', 'Amazon.de', 'Amazon.uk']
+        options = ['Ardes.bg', 'Optimal Computers', 'Plasico.bg', 'PIC.bg', 'jarcomputers.com', 'Desktop.bg', 'Amazon.com', 'Amazon.de', 'Amazon.uk']
 
         self.combo_website_options = ttk.Combobox(self.root, width=20, font=(self.preferred_font, 13, "bold"),
                                              values=options)
@@ -276,6 +277,8 @@ class GUI:
                 self.scraper = PlasicoScraper(self.update_gui)
             elif self.selected_website == "PIC.bg":
                 self.scraper = PICBgScraper(self.update_gui)
+            elif self.selected_website == "Optimal Computers":
+                self.scraper = OptimalComputersScraper(self.update_gui)
             
             print(f"DEBUG: Scraper created successfully for {self.selected_website}")
            

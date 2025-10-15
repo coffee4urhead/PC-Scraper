@@ -151,6 +151,10 @@ class PlaywrightBaseScraper(ABC):
                 self._update_progress(page_num - 1, total_pages)
 
                 page_url = self._construct_page_url(base_url, search_term, page_num)
+                if page_url == None:
+                    print(f"DEBUG: No more pages to scrape, stopping at page {page_num-1}")
+                    break
+                
                 print(f"DEBUG: Processing page {page_num}: {page_url}")
 
                 search_page = self.driver.new_page()
