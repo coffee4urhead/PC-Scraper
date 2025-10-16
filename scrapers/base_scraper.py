@@ -215,48 +215,49 @@ class PlaywrightBaseScraper(ABC):
         try:
             if not price_text or price_text == "N/A":
                 return 0.0
-            
+        
             print(f"DEBUG: Raw price text: '{price_text}'")
         
-            cleaned_text = re.sub(r'(\d)\s+(\d)', r'\1\2', price_text) 
-            cleaned_text = cleaned_text.replace(',', '.')  
+            cleaned_text = price_text.strip()
         
             price_patterns = [
-                r'(\d+[.,]?\d*)\s*лв',  
-                r'(\d+[.,]?\d*)\s*€',   
-                r'(\d+[.,]?\d*)\s*\$',  
-                r'(\d+[.,]?\d*)',       
+                r'(\d+(?:[.,]\d+)?)\s*лв',  
+                r'€\s*(\d+(?:[.,]\d+)?)',   
+                r'(\d+(?:[.,]\d+)?)\s*€',  
+                r'\$?\s*(\d+(?:[.,]\d+)?)', 
             ]
         
-            price_value = 0.0
             for pattern in price_patterns:
                 match = re.search(pattern, cleaned_text)
                 if match:
                     price_str = match.group(1)
+                    price_str = price_str.replace(',', '.')
                     try:
                         price_value = float(price_str)
-                        print(f"DEBUG: Extracted price '{price_str}' -> {price_value} from '{price_text}'")
-                        break
+                        print(f"DEBUG: Extracted price '{price_str}' -> {price_value} from '{price_text}' using pattern '{pattern}'")
+                        return price_value
                     except ValueError:
                         continue
         
-            if price_value == 0.0:
-                all_numbers = re.findall(r'\d+[.,]?\d*', cleaned_text)
-                if all_numbers:
-                    numbers = []
-                    for num_str in all_numbers:
-                        try:
-                            num = float(num_str.replace(',', '.'))
-                            if 0.1 < num < 100000:  
-                                numbers.append(num)
-                        except ValueError:
-                            continue
-                
-                    if numbers:
-                        price_value = max(numbers)  
-                        print(f"DEBUG: Fallback extracted price: {price_value} from '{price_text}'")
+            all_numbers = re.findall(r'\d+(?:[.,]\d+)?', cleaned_text)
+            if all_numbers:
+                numbers = []
+                for num_str in all_numbers:
+                    try:
+                        clean_num = num_str.replace(',', '.').replace(' ', '')
+                        num = float(clean_num)
+                        if 0.1 < num < 100000:  
+                            numbers.append(num)
+                    except ValueError:
+                        continue
+            
+                if numbers:
+                    price_value = max(numbers)
+                    print(f"DEBUG: Fallback extracted price: {price_value} from '{price_text}'")
+                    return price_value
         
-            return price_value
+            print(f"DEBUG: No valid price found in: '{price_text}'")
+            return 0.0
         
         except Exception as e:
             print(f"DEBUG: Price extraction error: {e} for text: '{price_text}'")
