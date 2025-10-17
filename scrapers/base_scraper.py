@@ -215,18 +215,32 @@ class PlaywrightBaseScraper(ABC):
         try:
             if not price_text or price_text == "N/A":
                 return 0.0
-        
+    
             print(f"DEBUG: Raw price text: '{price_text}'")
-        
-            cleaned_text = price_text.strip()
-        
+    
+            # First, handle the specific AllStore case with newlines
+            cleaned_text = ' '.join(price_text.split())  # Replace newlines with spaces
+            print(f"DEBUG: Cleaned price text: '{cleaned_text}'")
+    
+            # Pattern for AllStore specific format: "196 85 лв" -> 196.85
+            allstore_pattern = r'(\d+)\s+(\d+)\s*лв'
+            allstore_match = re.search(allstore_pattern, cleaned_text)
+            if allstore_match:
+                whole_part = allstore_match.group(1)
+                decimal_part = allstore_match.group(2)
+                price_str = f"{whole_part}.{decimal_part}"
+                price_value = float(price_str)
+                print(f"DEBUG: AllStore format extracted: {price_value} from '{price_text}'")
+                return price_value
+    
+            # Original patterns for other formats
             price_patterns = [
                 r'(\d+(?:[.,]\d+)?)\s*лв',  
                 r'€\s*(\d+(?:[.,]\d+)?)',   
                 r'(\d+(?:[.,]\d+)?)\s*€',  
                 r'\$?\s*(\d+(?:[.,]\d+)?)', 
             ]
-        
+    
             for pattern in price_patterns:
                 match = re.search(pattern, cleaned_text)
                 if match:
@@ -238,7 +252,7 @@ class PlaywrightBaseScraper(ABC):
                         return price_value
                     except ValueError:
                         continue
-        
+    
             all_numbers = re.findall(r'\d+(?:[.,]\d+)?', cleaned_text)
             if all_numbers:
                 numbers = []
@@ -250,15 +264,15 @@ class PlaywrightBaseScraper(ABC):
                             numbers.append(num)
                     except ValueError:
                         continue
-            
+        
                 if numbers:
                     price_value = max(numbers)
                     print(f"DEBUG: Fallback extracted price: {price_value} from '{price_text}'")
                     return price_value
-        
+    
             print(f"DEBUG: No valid price found in: '{price_text}'")
             return 0.0
-        
+    
         except Exception as e:
             print(f"DEBUG: Price extraction error: {e} for text: '{price_text}'")
             return 0.0
