@@ -20,6 +20,7 @@ from scrapers.tehnik_store_scraper import TehnikStoreScraper
 from scrapers.pro_bg_scraper import ProBgScraper
 from scrapers.senetic_scraper import SeneticScraper
 from scrapers.techno_mall_scraper import TechnoMallScraper
+from scrapers.thnx_bg_scraper import ThxScraper
 from scrapers.optimal_computers_scraper import OptimalComputersScraper
 
 from currency_converter import convert_currency
@@ -99,7 +100,7 @@ class GUI:
         self.combo_scrape_options.bind("<<ComboboxSelected>>", self.on_selection)
         canvas.create_window(1050, 120, anchor="center", window=self.combo_scrape_options)
 
-        options = ['Ardes.bg', 'AllStore.bg', 'Senetic.bg', 'TehnikStore.bg', 'Pro.bg', 'TechnoMall.bg', 'PcTech.bg', 'CyberTrade.bg', 'Xtreme.bg', 'Optimal Computers', 'Plasico.bg', 'PIC.bg', 'jarcomputers.com', 'Desktop.bg', 'Amazon.com', 'Amazon.de', 'Amazon.uk']
+        options = ['Ardes.bg', 'AllStore.bg', 'Thx.bg', 'Senetic.bg', 'TehnikStore.bg', 'Pro.bg', 'TechnoMall.bg', 'PcTech.bg', 'CyberTrade.bg', 'Xtreme.bg', 'Optimal Computers', 'Plasico.bg', 'PIC.bg', 'jarcomputers.com', 'Desktop.bg', 'Amazon.com', 'Amazon.de', 'Amazon.uk']
 
         self.combo_website_options = ttk.Combobox(self.root, width=20, font=(self.preferred_font, 13, "bold"),
                                              values=options)
@@ -303,6 +304,8 @@ class GUI:
                 self.scraper = AllStoreScraper(self.update_gui)
             elif self.selected_website == "Senetic.bg":
                 self.scraper = SeneticScraper(self.update_gui)
+            elif self.selected_website == "Thx.bg":
+                self.scraper = ThxScraper(self.update_gui)
             
             print(f"DEBUG: Scraper created successfully for {self.selected_website}")
            
