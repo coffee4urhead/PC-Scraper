@@ -3,8 +3,8 @@ from urllib.parse import urljoin, quote
 from .base_scraper import PlaywrightBaseScraper
 
 class ArdesScraper(PlaywrightBaseScraper):
-    def __init__(self, update_gui_callback=None):
-        super().__init__(update_gui_callback)
+    def __init__(self, website_currency, update_gui_callback=None):
+        super().__init__(website_currency, update_gui_callback)
         self.base_domain = "https://www.ardes.bg"
 
     def _get_base_url(self, search_term):

@@ -8,9 +8,8 @@ import string
 from playwright.sync_api import sync_playwright
 
 class PlaywrightBaseScraper(ABC):
-    def __init__(self, gui_callback=None, driver=None):
-        self.currency_symbol = "лв"
-        self.currency_code = "BGN"
+    def __init__(self, website_currency, gui_callback=None, driver=None):
+        self.website_currency = website_currency
         self.gui_callback = gui_callback
         self.scraping_thread = None
         self.stop_event = threading.Event()
@@ -218,11 +217,9 @@ class PlaywrightBaseScraper(ABC):
 
             print(f"DEBUG: Raw price text: '{price_text}'")
 
-            # First, handle the specific AllStore case with newlines
-            cleaned_text = ' '.join(price_text.split())  # Replace newlines with spaces
+            cleaned_text = ' '.join(price_text.split()) 
             print(f"DEBUG: Cleaned price text: '{cleaned_text}'")
 
-            # NEW: Simple price pattern for formats like "100300 лв" -> 100300.0
             simple_price_pattern = r'^(\d+)\.?(\d+)?\s*лв$'
             simple_match = re.search(simple_price_pattern, cleaned_text)
             if simple_match:
@@ -232,19 +229,17 @@ class PlaywrightBaseScraper(ABC):
                 price_value = float(price_str)
                 print(f"DEBUG: Simple price format extracted: {price_value} from '{price_text}'")
                 return price_value
-
-            # NEW: Pattern for superscript format: "2,02374 лв" -> 2023.74
+            
             superscript_pattern = r'(\d{1,3}(?:,\d{3})*)(\d{2})\s*лв'
             superscript_match = re.search(superscript_pattern, cleaned_text)
             if superscript_match:
-                whole_part = superscript_match.group(1).replace(',', '')  # Remove thousands separators
+                whole_part = superscript_match.group(1).replace(',', '')  
                 decimal_part = superscript_match.group(2)
                 price_str = f"{whole_part}.{decimal_part}"
                 price_value = float(price_str)
                 print(f"DEBUG: Superscript format extracted: {price_value} from '{price_text}'")
                 return price_value
 
-            # NEW: Pattern for Thx.bg specific format: "218· 30 лв" -> 218.30
             thx_pattern = r'(\d+)·\s*(\d+)\s*лв'
             thx_match = re.search(thx_pattern, cleaned_text)
             if thx_match:
@@ -255,7 +250,6 @@ class PlaywrightBaseScraper(ABC):
                 print(f"DEBUG: Thx.bg format extracted: {price_value} from '{price_text}'")
                 return price_value
 
-            # Pattern for AllStore specific format: "196 85 лв" -> 196.85
             allstore_pattern = r'(\d+)\s+(\d+)\s*лв'
             allstore_match = re.search(allstore_pattern, cleaned_text)
             if allstore_match:
@@ -266,7 +260,6 @@ class PlaywrightBaseScraper(ABC):
                 print(f"DEBUG: AllStore format extracted: {price_value} from '{price_text}'")
                 return price_value
 
-            # Original patterns for other formats
             price_patterns = [
                 r'(\d+(?:[.,]\d+)?)\s*лв',  
                 r'€\s*(\d+(?:[.,]\d+)?)',   

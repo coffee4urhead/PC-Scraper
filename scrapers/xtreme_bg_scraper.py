@@ -2,8 +2,8 @@ from urllib.parse import quote, urljoin
 from .base_scraper import PlaywrightBaseScraper
 
 class XtremeScraper(PlaywrightBaseScraper):
-    def __init__(self, update_gui_callback=None):
-        super().__init__(update_gui_callback)
+    def __init__(self, website_currency, update_gui_callback=None):
+        super().__init__(website_currency, update_gui_callback)
         self.base_url = "https://xtreme.bg/"
         self.exclude_keywords = [
             "Лаптоп", 'Настолен компютър', 'HP Victus', 'Acer Predator Helios'
@@ -84,7 +84,7 @@ class XtremeScraper(PlaywrightBaseScraper):
         
             product_data = {
                 'title': title,
-                'price': price / 100,
+                'price': price,
                 'url': product_url
             }
 

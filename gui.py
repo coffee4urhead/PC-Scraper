@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 import subprocess
 import os
 
-from scrapers.scraper import AmazonScraper
+from scrapers.amazon_com_scraper import AmazonComScraper
 from scrapers.ardes_scraper import ArdesScraper
 from scrapers.jar_computers_scraper import JarComputersScraper
 from scrapers.desktop_bg_scraper import DesktopScraper
@@ -279,45 +279,45 @@ class GUI:
     
         try:
             if self.selected_website == "Amazon.com":
-                self.scraper = AmazonScraper(self.update_gui)  
+                self.scraper = AmazonComScraper('USD', self.update_gui)  
             elif self.selected_website == "Ardes.bg":
-                self.scraper = ArdesScraper(self.update_gui)   
+                self.scraper = ArdesScraper('BGN', self.update_gui)   
             elif self.selected_website == 'jarcomputers.com':
-                self.scraper = JarComputersScraper(self.update_gui)  
+                self.scraper = JarComputersScraper('BGN', self.update_gui)  
             elif self.selected_website == "Desktop.bg":
-                self.scraper = DesktopScraper(self.update_gui)
+                self.scraper = DesktopScraper('BGN', self.update_gui)
             elif self.selected_website == "Plasico.bg":
-                self.scraper = PlasicoScraper(self.update_gui)
+                self.scraper = PlasicoScraper('BGN', self.update_gui)
             elif self.selected_website == "PIC.bg":
-                self.scraper = PICBgScraper(self.update_gui)
+                self.scraper = PICBgScraper('BGN', self.update_gui)
             elif self.selected_website == "Optimal Computers":
-                self.scraper = OptimalComputersScraper(self.update_gui)
+                self.scraper = OptimalComputersScraper('BGN', self.update_gui)
             elif self.selected_website == "Xtreme.bg":
-                self.scraper = XtremeScraper(self.update_gui)
+                self.scraper = XtremeScraper('BGN', self.update_gui)
             elif self.selected_website == "CyberTrade.bg":
-                self.scraper = CyberTradeScraper(self.update_gui)
+                self.scraper = CyberTradeScraper('BGN', self.update_gui)
             elif self.selected_website == "PcTech.bg":
-                self.scraper = PcTechBgScraper(self.update_gui)
+                self.scraper = PcTechBgScraper('BGN', self.update_gui)
             elif self.selected_website == "Pro.bg":
-                self.scraper = ProBgScraper(self.update_gui)
+                self.scraper = ProBgScraper('BGN', self.update_gui)
             elif self.selected_website == "TechnoMall.bg":
-                self.scraper = TechnoMallScraper(self.update_gui)
+                self.scraper = TechnoMallScraper('BGN', self.update_gui)
             elif self.selected_website == "TehnikStore.bg":
-                self.scraper = TehnikStoreScraper(self.update_gui)
+                self.scraper = TehnikStoreScraper('BGN', self.update_gui)
             elif self.selected_website == "AllStore.bg":
-                self.scraper = AllStoreScraper(self.update_gui)
+                self.scraper = AllStoreScraper('BGN', self.update_gui)
             elif self.selected_website == "Senetic.bg":
-                self.scraper = SeneticScraper(self.update_gui)
+                self.scraper = SeneticScraper('BGN', self.update_gui)
             elif self.selected_website == "Thx.bg":
-                self.scraper = ThxScraper(self.update_gui)
+                self.scraper = ThxScraper('BGN', self.update_gui)
             elif self.selected_website == "GtComputers.bg":
-                self.scraper = GtComputersScraper(self.update_gui)
+                self.scraper = GtComputersScraper('BGN', self.update_gui)
             elif self.selected_website == "Ezona.bg":
-                self.scraper = EZonaScraper(self.update_gui)
+                self.scraper = EZonaScraper('BGN', self.update_gui)
             elif self.selected_website == "Tova.bg":
-                self.scraper = TovaBGScraper(self.update_gui)
+                self.scraper = TovaBGScraper('BGN', self.update_gui)
             elif self.selected_website == "Hits.bg":
-                self.scraper = HitsBGScraper(self.update_gui)
+                self.scraper = HitsBGScraper('BGN', self.update_gui)
 
             print(f"DEBUG: Scraper created successfully for {self.selected_website}")
            
@@ -412,11 +412,11 @@ class GUI:
 
                             converted_price = convert_currency(
                                 original_price,
-                                'BGN',  
+                                self.scraper.website_currency, 
                                 self.preferred_currency
                             )
 
-                            print(f"Converted {original_price} BGN to {converted_price} {self.preferred_currency}")
+                            print(f"Converted {original_price} {self.scraper.website_currency} to {converted_price} {self.preferred_currency}")
                             formatted_price = f"{self.currency_symbol}{converted_price:.2f}"
                             product['price'] = formatted_price
                         except Exception as e:

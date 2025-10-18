@@ -10,7 +10,7 @@ API_BASE_URL = os.getenv("BASE_URL")
 last_api_call = 0
 MIN_API_DELAY = 1.0  
 
-def convert_currency(amount, from_currency, to_currency):
+def convert_currency(amount, from_currency, to_currency="BGN"):
     global last_api_call
     
     if from_currency == to_currency:
