@@ -222,6 +222,17 @@ class PlaywrightBaseScraper(ABC):
             cleaned_text = ' '.join(price_text.split())  # Replace newlines with spaces
             print(f"DEBUG: Cleaned price text: '{cleaned_text}'")
 
+            # NEW: Simple price pattern for formats like "100300 лв" -> 100300.0
+            simple_price_pattern = r'^(\d+)\.?(\d+)?\s*лв$'
+            simple_match = re.search(simple_price_pattern, cleaned_text)
+            if simple_match:
+                whole_part = simple_match.group(1)
+                decimal_part = simple_match.group(2) or "00"
+                price_str = f"{whole_part}.{decimal_part}"
+                price_value = float(price_str)
+                print(f"DEBUG: Simple price format extracted: {price_value} from '{price_text}'")
+                return price_value
+
             # NEW: Pattern for superscript format: "2,02374 лв" -> 2023.74
             superscript_pattern = r'(\d{1,3}(?:,\d{3})*)(\d{2})\s*лв'
             superscript_match = re.search(superscript_pattern, cleaned_text)

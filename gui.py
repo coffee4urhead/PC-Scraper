@@ -16,6 +16,7 @@ from scrapers.all_store_bg_scraper import AllStoreScraper
 from scrapers.pc_tech_scraper import PcTechBgScraper
 from scrapers.cyber_trade_scraper import CyberTradeScraper
 from scrapers.pic_bg_scraper import PICBgScraper
+from scrapers.hits_bg_scraper import HitsBGScraper
 from scrapers.tehnik_store_scraper import TehnikStoreScraper
 from scrapers.pro_bg_scraper import ProBgScraper
 from scrapers.tova_bg_scraper import TovaBGScraper
@@ -103,7 +104,7 @@ class GUI:
         self.combo_scrape_options.bind("<<ComboboxSelected>>", self.on_selection)
         canvas.create_window(1050, 120, anchor="center", window=self.combo_scrape_options)
 
-        options = ['Ardes.bg', 'AllStore.bg', 'Tova.bg', 'Ezona.bg', 'GtComputers.bg', 'Thx.bg', 'Senetic.bg', 'TehnikStore.bg', 'Pro.bg', 'TechnoMall.bg', 'PcTech.bg', 'CyberTrade.bg', 'Xtreme.bg', 'Optimal Computers', 'Plasico.bg', 'PIC.bg', 'jarcomputers.com', 'Desktop.bg', 'Amazon.com', 'Amazon.de', 'Amazon.uk']
+        options = ['Ardes.bg', 'AllStore.bg', 'Hits.bg', 'Tova.bg', 'Ezona.bg', 'GtComputers.bg', 'Thx.bg', 'Senetic.bg', 'TehnikStore.bg', 'Pro.bg', 'TechnoMall.bg', 'PcTech.bg', 'CyberTrade.bg', 'Xtreme.bg', 'Optimal Computers', 'Plasico.bg', 'PIC.bg', 'jarcomputers.com', 'Desktop.bg', 'Amazon.com', 'Amazon.de', 'Amazon.uk']
 
         self.combo_website_options = ttk.Combobox(self.root, width=20, font=(self.preferred_font, 13, "bold"),
                                              values=options)
@@ -315,6 +316,8 @@ class GUI:
                 self.scraper = EZonaScraper(self.update_gui)
             elif self.selected_website == "Tova.bg":
                 self.scraper = TovaBGScraper(self.update_gui)
+            elif self.selected_website == "Hits.bg":
+                self.scraper = HitsBGScraper(self.update_gui)
 
             print(f"DEBUG: Scraper created successfully for {self.selected_website}")
            
