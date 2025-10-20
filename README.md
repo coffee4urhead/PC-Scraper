@@ -34,79 +34,36 @@
 
 # Into this clarity:
 # 🏆 BEST DEAL: RTX 4080 - $1149 (Website B)
+```
 
-### 🗂️ Home Page
+### 🗂️ Main Page
 
--Displays our Gold partners that are ready for internships and sponsorships
+- Displays a search GUI where people can interact with the field typing in the product that they are looking for 
 
-- Displays website reviews and offers business-grade plans that are the following
--
-    1. Basic Plan — “Starter” price: 9.99$/month
+- This is also the place where you select the website you want to be scraped and just ***sit*** and ***watch*** as the ***progress bar*** fills up to 100%
 
-1. Offer 3 active services
-2. Appear in standard search results
-3. Access to basic analytics
+- You also have the ***Select Save Folder*** functionality where you can select where do you want the excel spreadsheet to be saved on you system.
 
--
-    2. Professional Plan — “Growth” price: 29.99$/month
+- The excel spreadsheet which is the final result of the scraping is made from three ***required*** fields: Product Name, Price and URl. There are also technical specifications which are filled with nothing if there is no technical spec that has been scraped for a previous product offering.
 
-1. Up to 10 active service listings
-2. Priority placement in search results
-3. Unlimited bookings
-4. Full analytics dashboard
+## 🌟 User Options Menu
 
--
-    3. Business Plan — “Elite” price: 79.99$/month
+- This menu contains setting regarding the font, currency setttings, price formatting, browser options and choosing the application theme
 
-1. Unlimited listings
-2. Featured badge and homepage spotlight
-3. Early access to new features
-4. Become eligible for gold partner
+***Fonts***: Arial, Courier New, Georgia, Times New Roman and Verdana
 
-## 🌟 About PC-Parts-Scraper
+***Currency Settings***: you can choose the currency you want the scraped prices to be converted to. You can choose from USD, EUR, GBP, JPY, BGN, BRL, CAD. We can always expand our currency options by adding more.
 
-PC-Parts-Scraper is a global marketplace connecting skilled service providers with clients seeking quality services. Our
-platform fosters meaningful professional relationships through transparency, trust, and personalized matching.
+***Price Formatting***: You can have your price formatted in a custom preferred type or have it done to an integer value instead!
 
-### 🔍 For Service Seekers
+***Browser Options***: Choose from various website browsers like MS Edge, Brave, Firefox, Safari or Chromium. Keep in mind Chromium is the ***default*** browser even if you select a browser which you don't have installed on your system currently.
 
-- **Discover Professionals**: Search by service category, skills, location, or ratings
-- **Verified Providers**: View complete profiles with portfolios and client reviews
-- **Transparent Process**: See pricing, availability, and service details upfront
-- **Secure Booking**: Schedule and pay for services with confidence
+***Application Theme***: Choose whether your like dark themed or full white.
 
-### 🛠 For Service Providers
+### 🔍 File and Help menu
 
-- **Showcase Your Skills**: Create detailed service listings with photos/videos
-- **Manage Availability**: Set your own schedule and service parameters
-- **Build Reputation**: Earn reviews and ratings from satisfied clients
-- **Get Discovered**: Appear in targeted searches based on your specialties
-
-### ✨ Platform Features
-
-- **Secure Messaging**: Built-in communication system
-- **Review System**: Rate and review completed services
-- **Availability Calendar**: Real-time booking management
-- **Payment Protection**: Secure escrow system for transactions
-
-### 🛠 Admin Panel (admins only)
-
-- **Blacklist Management** – Manage reported content like comments, services, user and reviews
-- **Bookings Management** – Oversee total bookings made and visualised on Plotly graphs
-- **Users and Organization Management** – Track user registration, organizations and pending certificates to be verified
-- **Services Management** – Track total services, availabilities and comments
-- **Chats Management** - Admins can oversee conversations between users and see the messages
-- **Reviews Management** - Discover user/website reviews form users
-- **Subscriptions Management** - Manage the subscriptions across the PC-Parts-Scraper platform users
-
-### 📄 Additional Pages
-
-- **Home** – Introduction to the platform and its purpose
-- **Verification application** - the start of verified personal certificates
-- **Contact Us** – Users can reach out to the support team via email
-- **Privacy Policy** – Explains how user data is collected and handled
-- **Customer Support** – chat directly with our service customer 24/7 support
-- **Careers** - Explore PC-Parts-Scraper opportunities
+- ***Close the file*** from the ***Help*** menu
+- ***Help** menu shows information about the project and the creator in general
 
 ---
 ### Follow these steps to get the PC-Parts-Scraper application up and running on your local machine for development and testing purposes.
@@ -119,14 +76,14 @@ platform fosters meaningful professional relationships through transparency, tru
    computer.
 
    ```bash
-   git clone https://github.com/coffee4urhead/PC-Parts-Scraper.git
+   git clone https://github.com/coffee4urhead/PC-Scraper.git
    ```
 
 2. **Navigate to the Project Directory**:  
    Use the terminal to navigate to the project directory.
 
    ```bash
-   cd JobJab
+   cd PC-Scraper
    ```
 
 4. **Install Dependencies**:  
@@ -135,103 +92,10 @@ platform fosters meaningful professional relationships through transparency, tru
    ```bash
    pip install -r requirements.txt
    ```
-5. **Manage settings.py**:  
-   List all the apps in the JobJab application by typing in under the INSTALLED_APPS setting - "JobJab.services",
-   "JobJab.booking",
-   "JobJab.reviews",
-   'JobJab.dashboard',
-   "JobJab.subscriptions",
-   'JobJab.chats',
-   You will also need to list the static dir settings STATIC_URL = '/static/'
-   MEDIA_URL = '/media/'
-   MEDIA_ROOT = BASE_DIR / 'media'
-   STATICFILES_DIRS = [
-   os.path.join(BASE_DIR, 'static'),
-   ]
-
-STATICFILES_FINDERS = [
-'django.contrib.staticfiles.finders.FileSystemFinder',
-'django.contrib.staticfiles.finders.AppDirectoriesFinder',
-'compressor.finders.CompressorFinder',
-]
-STATIC_ROOT = os.path.join(BASE_DIR, 'compiledsass')
-The project uses Sass Django Compressor that you can configure with these settings: COMPRESS_PRECOMPILERS = (
-('text/x-scss', 'django_libsass.SassCompiler'),
-)
-COMPRESS_ENABLED = True
-COMPRESS_ROOT = STATIC_ROOT
-You will also have to include these dependencies in the INSTALLED_APPS setting: 'compressor',
-'pdf2image',
-'django_cron',
-'channels',
-'django.contrib.postgres',
-
-Use POSTGRES for the DB as the project uses psycopg2 as a PostgreSQL database adapter for Python. It allows Python
-applications to interact with PostgreSQL databases efficiently and securely.
-Under the MIDDLEWARE settings list the following: 'django.contrib.messages.middleware.MessageMiddleware',
-'django.middleware.clickjacking.XFrameOptionsMiddleware', as we are using asgi application in the chats app
-Also add CHANNEL_LAYERS setting: CHANNEL_LAYERS = {
-"default": {
-"BACKEND": "channels.layers.InMemoryChannelLayer"
-},
-}
-FOR AUTH_PASSWORD_VALIDATORS I USE THE DEFAULT ONES WITH A SMALL CHANGE - {
-'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-'OPTIONS': {'min_length': 10},
-},
-Here are the redirect url and login url as well as the base AUTH user model settings i use: AUTH_USER_MODEL = '
-core.CustomUser'
-LOGIN_REDIRECT_URL = 'home'
-LOGOUT_REDIRECT_URL = 'home'
-LOGIN_URL = '/user/login/'
-
-i set sessions to age SESSION_COOKIE_AGE = 1209600
-
-6. **Prepare Django Stripe**:  
-   To integrate Stripe payments into your Django app, follow these steps to create a Stripe account and obtain the
-   required credentials (Publishable Key and Secret Key).
-
-## 🚀 Getting Started
-
-### Stripe Account Setup
-
-1. **Sign up at [stripe.com](https://stripe.com/)**
-2. **Get API Keys**:
-    - Test Mode → `pk_test_...` (frontend) and `sk_test_...` (backend)
-    - Live Mode → `pk_live_...` and `sk_live_...` (after verification)
-3. **Add to Django Settings**:
-   ```python
-   # settings.py
-   STRIPE_PUBLIC_KEY = os.getenv('STRIPE_PUBLIC_KEY')  # Frontend
-   STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY')  # Backend
-   STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET')  # Webhooks
-4. **Setup Webhooks**:
-   For this to work you need to have installed stripe CLI - visit this website to learn more about the installation and
-   stripe account login - 'https://docs.stripe.com/stripe-cli#install'
-
-```bash
-   stripe listen --forward-to localhost:8000/subscriptions/stripe-webhook/
-
-stripe listen --forward-to localhost:8000/booking/stripe-webhook/ 
-
-   ```
-
-7. **Run the Client Part**:  
-   Start the Python Django Framework development server with this command:
-
-   ```bash
-   python manage.py runserver
-   ```
-
-8. **Open the Project**:  
-   Access the application by opening the following URL in a web browser:  
-   For other device connections discover your IP address by typing in   ```bash ipconfig ``` then start the server with
-   ```bash python manage.py runserver 0.0.0.0:8000 ``` - this will forward the django website through your IP (Be
-   careful because this exposes your actual IP). Then you will access your website at `http://<your-ip-address>:8000/`
-   `http://127.0.0.0:8000/`
+5. **Create your own API keys**:  
+   I am currently using this currency conversion API in my application: ***https://unirateapi.com/*** which i would like to give special thanks to provided that the API is completely free and with unlimited usage!
 
 ---
-
 
 🛠️ **Technologies and Tools**
 
