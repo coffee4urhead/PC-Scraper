@@ -100,42 +100,44 @@
 🛠️ **Technologies and Tools**
 
 <p align="left">
-<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/redis/redis-original.svg" width="40" height="40" />
-<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/plotly/plotly-original-wordmark.svg" width="40" height="40"/>
-<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/postgresql/postgresql-original-wordmark.svg" width="40" height="40" />
-<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/sass/sass-original.svg" width="40" height="40" />
-<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/socketio/socketio-original-wordmark.svg" width="40" height="40"/>
-<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/pandas/pandas-original-wordmark.svg" width="40" height="40"/>
-<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/ngrok/ngrok-original.svg" width="40" height="40"/>
-<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/django/django-plain.svg" width="40" height="40"/>
-<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/djangorest/djangorest-line.svg" width="40" height="40"/>
+<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg" width="40" height="40" />
+<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/playwright/playwright-original.svg" width="40" height="40" />
+<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/selenium/selenium-original.svg" width="40" height="40" />
+<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/socketio/socketio-original.svg" width="40" height="40" />
 </p>
 
 ---
 
 ### 📚 Libraries
 
-- **pdf2image==1.17.0** – Converts PDF documents to images (supports PNG/JPEG formats)
-- **pandas==2.3.1** – Data analysis and manipulation tool for structured data operations
-- **numpy==2.3.2** – Fundamental package for numerical computing with array support
-- **ngrok==1.4.0** – Secure tunneling service for exposing local servers to the internet
-- **pillow==11.2.1** – Python Imaging Library for image processing capabilities
-- **djangorestframework==3.16.0** – Toolkit for building Web APIs with Django
-- **channels==4.2.2** – Extends Django to handle WebSockets and async protocols
-- **channels_redis==4.2.1** – Redis channel layer backend for Django Channels
-- **django-stripe-payments==2.0.0** – Django integration for Stripe payment processing
-- **django-compressor==4.1** – Combines and minifies static files (CSS/JS)
-- **cryptography==45.0.5** – Provides cryptographic recipes and primitives
-- **daphne==4.2.1** – HTTP/WebSocket protocol server for Django Channels
-- **Django==5.0.1** – High-level Python web framework (core dependency)
-- **plotly==6.2.0** – Interactive graphing library for data visualization
-- **psycopg2==2.9.10** – PostgreSQL database adapter for Python
-- **python-dotenv==1.1.1** – Reads key-value pairs from .env files
-- **stripe==12.3.0** – Official Stripe API library for payment processing
+### 🛠️ Tech Stack & Libraries
+
+**Powered by these awesome tools:** 
+
+| Category | Libraries & Tools |
+|----------|-------------------|
+| **🕸️ Web Scraping** | `playwright==1.55.0`, `selenium==4.36.0`, `beautifulsoup4==4.14.2`, `requests==2.32.5` |
+| **📊 Data Processing** | `pandas==2.3.1`, `xlsxwriter==3.2.9`, `sortedcontainers==2.4.0` |
+| **🎨 Image & GUI** | `pillow==11.3.0`, `pygame==2.6.1` |
+| **⚡ Async Operations** | `trio==0.31.0`, `trio-websocket==0.12.2`, `websockets==15.0.1` |
+| **🔧 Development** | `black==25.9.0`, `python-dotenv==1.1.1`, `mypy_extensions==1.1.1` |
+| **🌐 Web Automation** | `webdriver-manager==4.0.2`, `websocket-client==1.9.0` |
+| **🔒 Security & Networking** | `certifi==2025.10.5`, `urllib3==2.5.0`, `PySocks==1.7.1` |
+
+---
+
+### 🔧 Core Dependencies Deep Dive
+
+#### **Web Scraping Powerhouse 🕷️**
+```python
+# Your scraping toolkit includes:
+- playwright==1.55.0      # Modern browser automation
+- selenium==4.36.0        # Web driver control  
+- beautifulsoup4==4.14.2  # HTML parsing magic
+- requests==2.32.5        # HTTP requests made easy
+```
 
 🛠️ **Key Integrations**:
 
-- **Stripe** for payment processing
-- **PostgreSQL** via psycopg2 for database operations
-- **Redis** for Channels backend
-- **Plotly** for admin dashboard visualizations
+- **Tkinter** for GUI and visualization
+- **XLSwriter** via psycopg2 for database operations
