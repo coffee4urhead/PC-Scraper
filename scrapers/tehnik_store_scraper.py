@@ -81,57 +81,14 @@ class TehnikStoreScraper(PlaywrightBaseScraper):
             title_element = page.query_selector('div.single-product-header h1.product_title')
             title = title_element.inner_text().strip() if title_element else "N/A"
 
-            # DEBUG: Check what price elements exist on the page
-            print("DEBUG: Searching for price elements...")
-        
-            # Try multiple price selectors
-            price_selectors = [
-                'p.price',
-                '.price',
-                'span.price',
-                'ins .woocommerce-Price-amount',
-                'del .woocommerce-Price-amount',
-                '.woocommerce-Price-amount',
-                'span.amount',
-                'bdi'
-            ]
-        
-            price_text = "N/A"
-        
-            for selector in price_selectors:
-                elements = page.query_selector_all(selector)
-                print(f"DEBUG: Selector '{selector}' found {len(elements)} elements")
-            
-                for i, elem in enumerate(elements):
-                    text = elem.inner_text().strip()
-                    html = elem.inner_html()
-                    print(f"DEBUG:   Element {i}: text='{text}', html='{html[:100]}...'")
-                
-                    # If we find something that looks like a price, use it
-                    if any(currency in text for currency in ['лв', '€', '$']) and any(char.isdigit() for char in text):
-                        price_text = text
-                        print(f"DEBUG:   -> Using this as price: '{price_text}'")
-                        break
-                if price_text != "N/A":
-                    break
-        
-            # If still no price found, try to get the entire price section
-            if price_text == "N/A":
-                price_section = page.query_selector('p.price')
-                if price_section:
-                    full_price_html = price_section.inner_html()
-                    full_price_text = price_section.inner_text()
-                    print(f"DEBUG: Full price section HTML: {full_price_html}")
-                    print(f"DEBUG: Full price section text: {full_price_text}")
-                
-                    price_matches = re.findall(r'(\d+[.,]\d+)\s*лв', full_price_text)
-                    if price_matches:
-                        price_text = f"{price_matches[0]} лв."
-                        print(f"DEBUG: Regex extracted price: '{price_text}'")
-        
-            print(f"DEBUG: Final price text to process: '{price_text}'")
-            price = self._extract_and_convert_price(price_text)
-    
+            price_element_discounted = page.query_selector('p.price ins[aria-hidden=true] span.woocommerce-Price-amount.amount')
+            price_element = page.query_selector('p.price span.woocommerce-Price-amount.amount bdi')
+
+            if price_element_discounted:
+                price = self._extract_and_convert_price(price_element_discounted.inner_text().strip())
+            else:
+                price = self._extract_and_convert_price(price_element.inner_text().strip()) if price_element else "N/A"
+
             product_data = {
                 'title': title,
                 'price': price,
@@ -140,13 +97,10 @@ class TehnikStoreScraper(PlaywrightBaseScraper):
 
             print(f"DEBUG: Extracted TehnikStore product: {title} - {price}")
 
-            # Extract specifications
             tech_section = page.query_selector('div.woocommerce-Tabs-panel')
             if tech_section:
-                # Try to find specification tables or lists
                 spec_rows = tech_section.query_selector_all('tr')
                 if spec_rows:
-                    # It's a table format
                     for row in spec_rows:
                         try:
                             cells = row.query_selector_all('td')
@@ -159,7 +113,6 @@ class TehnikStoreScraper(PlaywrightBaseScraper):
                         except Exception as e:
                             print(f"DEBUG: Skipping table row: {str(e)}")
                 else:
-                    # Try list items
                     list_items = tech_section.query_selector_all('li')
                     for item in list_items:
                         try:
