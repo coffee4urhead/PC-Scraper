@@ -31,7 +31,7 @@ from scrapers.optimal_computers_scraper import OptimalComputersScraper
 
 from currency_converter import convert_currency
 
-# TODO: Senetic.bg GTComputers Tova.bg Allstore has problems with four digit prices
+# TODO: Tova.bg Allstore has problems with four digit prices
 
 from windows.help_window import HelpWindow
 from options_window import OptionsWindow

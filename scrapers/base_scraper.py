@@ -313,7 +313,26 @@ class PlaywrightBaseScraper(ABC):
         except Exception as e:
             print(f"DEBUG: Price extraction error: {e} for text: '{price_text}'")
             return 0.0
-    
+        
+    def _extract_gt_computers_price(self, price_text):
+        """Specialized price extraction for GT Computers with narrow no-break spaces"""
+        try:
+            if not price_text or price_text == "N/A":
+                return None
+
+            print(f"DEBUG: GT Computers raw price text: '{price_text}'")
+
+            cleaned_text = list(filter(lambda x: x != 'Сега', price_text.split(" ")))
+            print(f"DEBUG: GT Computers cleaned price text: '{cleaned_text}'")
+        
+            price = float(cleaned_text[0].replace('\u202f', ''))
+            print(f"DEBUG: GT Computers specific format extracted: {price}")
+            return price
+        
+        except Exception as e:
+            print(f"DEBUG: GT Computers price extraction error: {e}")
+            return None
+        
     def generate_random_crid(self):
         """Generate random crid for Amazon URLs"""
         return ''.join(random.choices(string.ascii_uppercase + string.digits, k=12))

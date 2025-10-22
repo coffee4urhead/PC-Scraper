@@ -84,7 +84,10 @@ class GtComputersScraper(PlaywrightBaseScraper):
             if price_element:
                 price_text = price_element.inner_text().strip()
                 bgn_part = price_text.split('/')[0].replace("Цена", "").strip()
-                price = self._extract_and_convert_price(bgn_part)
+            
+                price = self._extract_gt_computers_price(bgn_part)
+                if price is None:
+                    price = self._extract_and_convert_price(bgn_part)
             else:
                 price = 0.0
         
