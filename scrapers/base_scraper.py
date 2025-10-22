@@ -219,6 +219,17 @@ class PlaywrightBaseScraper(ABC):
 
             cleaned_text = ' '.join(price_text.split()) 
             print(f"DEBUG: Cleaned price text: '{cleaned_text}'")
+            
+            senetic_pattern = r'(\d{1,3}(?:\s\d{3})*)(?:[.,](\d{2}))?\s*лв'
+            senetic_match = re.search(senetic_pattern, cleaned_text)
+
+            if senetic_match:
+                whole_part = senetic_match.group(1).replace(' ', '')  
+                decimal_part = senetic_match.group(2) or "00"
+                price_str = f"{whole_part}.{decimal_part}"
+                price_value = float(price_str)
+                print(f"DEBUG: Senetic format extracted: {price_value} from '{price_text}'")
+                return price_value
 
             simple_price_pattern = r'^(\d+)\.?(\d+)?\s*лв$'
             simple_match = re.search(simple_price_pattern, cleaned_text)
@@ -261,7 +272,7 @@ class PlaywrightBaseScraper(ABC):
                 return price_value
 
             price_patterns = [
-                r'(\d+(?:[.,]\d+)?)\s*лв',  
+                r'(\d+(?:[\s.,]\d+)*)\s*лв',  
                 r'€\s*(\d+(?:[.,]\d+)?)',   
                 r'(\d+(?:[.,]\d+)?)\s*€',  
                 r'\$?\s*(\d+(?:[.,]\d+)?)', 
@@ -271,7 +282,7 @@ class PlaywrightBaseScraper(ABC):
                 match = re.search(pattern, cleaned_text)
                 if match:
                     price_str = match.group(1)
-                    price_str = price_str.replace(',', '.')
+                    price_str = price_str.replace(' ', '').replace(',', '.')
                     try:
                         price_value = float(price_str)
                         print(f"DEBUG: Extracted price '{price_str}' -> {price_value} from '{price_text}' using pattern '{pattern}'")
@@ -279,12 +290,12 @@ class PlaywrightBaseScraper(ABC):
                     except ValueError:
                         continue
 
-            all_numbers = re.findall(r'\d+(?:[.,]\d+)?', cleaned_text)
+            all_numbers = re.findall(r'\d+(?:[\s.,]\d+)?', cleaned_text)
             if all_numbers:
                 numbers = []
                 for num_str in all_numbers:
                     try:
-                        clean_num = num_str.replace(',', '.').replace(' ', '')
+                        clean_num = num_str.replace(' ', '').replace(',', '.')
                         num = float(clean_num)
                         if 0.1 < num < 100000:  
                             numbers.append(num)
