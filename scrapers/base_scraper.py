@@ -359,7 +359,36 @@ class PlaywrightBaseScraper(ABC):
         except Exception as e:
             print(f"DEBUG: Tova.bg price extraction error: {e}")
             return None
-        
+    
+    def _extract_allstore_price(self, price_text):
+        """Specialized price extraction for AllStore with line break format"""
+        try:
+            if not price_text or price_text == "N/A":
+                return None
+
+            print(f"DEBUG: AllStore raw price text: '{price_text}'")
+
+            cleaned_text = price_text.replace('\n', ' ').strip()
+            cleaned_text = ' '.join(cleaned_text.split())
+            print(f"DEBUG: AllStore cleaned price text: '{cleaned_text}'")
+
+            pattern = r'(\d{1,3}(?:,\d{3})*)\s+(\d{2})\s*\.\s*(\d{2})'
+            match = re.search(pattern, cleaned_text)
+            if match:
+                whole_part = match.group(1).replace(',', '')
+                decimal_part = match.group(2)
+                price_str = f"{whole_part}.{decimal_part}"
+                price_value = float(price_str)
+                print(f"DEBUG: AllStore specific format extracted: {price_value}")
+                return price_value
+
+            print(f"DEBUG: AllStore pattern did not match: '{cleaned_text}'")
+            return None
+
+        except Exception as e:
+            print(f"DEBUG: AllStore price extraction error: {e}")
+            return None
+    
     def generate_random_crid(self):
         """Generate random crid for Amazon URLs"""
         return ''.join(random.choices(string.ascii_uppercase + string.digits, k=12))

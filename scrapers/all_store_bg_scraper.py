@@ -80,14 +80,24 @@ class AllStoreScraper(PlaywrightBaseScraper):
             title_element = page.query_selector('div.c-product-page__product-name-wrapper h1')
             title = title_element.inner_text().strip() if title_element else "N/A"
 
-            price_elements = page.query_selector_all('span.taxed-price-value')
-            if price_elements:
-                price_text = price_elements[0].inner_text().strip()
-                price = self._extract_and_convert_price(price_text)
-                print(f"DEBUG: Extracted price text: '{price_text}' -> {price}")
+            price_int_element = page.query_selector('span.taxed-price-value')
+            if price_int_element:
+                price_int = price_int_element.inner_text().strip().replace(' лв.', '').replace('лв.', '')
+    
+                price_sup_element = page.query_selector('span.taxed-price-value sup')
+                price_sup = price_sup_element.inner_text().strip() if price_sup_element else "00"
+    
+                price_elements = f"{price_int}.{price_sup}"
+    
+                if price_elements:
+                    price = self._extract_allstore_price(price_elements)
+                    print(f"DEBUG: Extracted price text: '{price_elements}' -> {price}")
+                else:
+                    price = 0.0
+                    print("DEBUG: No price elements found")
             else:
                 price = 0.0
-                print("DEBUG: No price elements found")
+                print("DEBUG: No price element found")
         
             product_data = {
                 'title': title,

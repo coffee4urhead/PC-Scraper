@@ -31,8 +31,6 @@ from scrapers.optimal_computers_scraper import OptimalComputersScraper
 
 from currency_converter import convert_currency
 
-# TODO: Tova.bg Allstore has problems with four digit prices
-
 from windows.help_window import HelpWindow
 from options_window import OptionsWindow
 from windows.font_options_window import WindowsFontOptions
@@ -125,7 +123,7 @@ class GUI:
 
         self.folder_label = tk.Label(self.root, text=f"Save folder: {self.save_folder}",
                          font=(self.preferred_font, 10), bg='white')
-        canvas.create_window(450, 180, anchor="center", window=self.folder_label)
+        canvas.create_window(300, 180, anchor="center", window=self.folder_label)
 
         self.select_folder_button = tk.Button(
             self.root,
@@ -135,7 +133,7 @@ class GUI:
             font=(self.preferred_font, 12, "bold"),
             cursor="hand2"
         )
-        canvas.create_window(200, 180, anchor="center", window=self.select_folder_button)
+        canvas.create_window(100, 180, anchor="center", window=self.select_folder_button)
 
         self.progress_bar = ttk.Progressbar(self.root, orient='horizontal',
                                         length=600, mode='determinate')
