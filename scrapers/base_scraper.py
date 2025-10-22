@@ -332,6 +332,33 @@ class PlaywrightBaseScraper(ABC):
         except Exception as e:
             print(f"DEBUG: GT Computers price extraction error: {e}")
             return None
+
+    def _extract_tova_bg_price(self, price_text):
+        """Specialized price extraction for Tova.bg with narrow no-break spaces"""
+        try:
+            if not price_text or price_text == "N/A":
+                return None
+
+            print(f"DEBUG: Tova.bg raw price text: '{price_text}'")
+            parts = price_text.split(" ")
+            if not parts:
+                print("DEBUG: Tova.bg - No parts found after splitting")
+                return None
+            
+            cleaned_text = parts[0].replace(",", "")
+            print(f"DEBUG: Tova.bg cleaned price text: '{cleaned_text}'")
+        
+            if not re.match(r'^\d+[.,]?\d*$', cleaned_text):
+                print(f"DEBUG: Tova.bg - Price format not as expected: '{cleaned_text}'")
+                return None
+            
+            price = float(cleaned_text)
+            print(f"DEBUG: Tova.bg specific format extracted: {price}")
+            return price
+    
+        except Exception as e:
+            print(f"DEBUG: Tova.bg price extraction error: {e}")
+            return None
         
     def generate_random_crid(self):
         """Generate random crid for Amazon URLs"""

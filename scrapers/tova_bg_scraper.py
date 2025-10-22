@@ -83,7 +83,10 @@ class TovaBGScraper(PlaywrightBaseScraper):
         
             price_element = page.query_selector('span.u-price__base__value')
             price_text = price_element.inner_text().strip() if price_element else "N/A"
-            price = self._extract_and_convert_price(price_text)
+            price = self._extract_tova_bg_price(price_text)
+
+            if price is None:
+                price = self._extract_and_convert_price(price_text)
         
             product_data = {
                 'title': title,
