@@ -78,10 +78,16 @@ class TechnoMallScraper(PlaywrightBaseScraper):
 
             title_element = page.query_selector('div.c-product-page__product-name-and-price h1')
             title = title_element.inner_text().strip() if title_element else "N/A"
-        
+
+            price_element_discounted = page.query_selector('span.price-is-discounted')
             price_element = page.query_selector('span.taxed-price-value')
-            price_text = price_element.inner_text().strip() if price_element else "N/A"
-            price = self._extract_and_convert_price(price_text)
+
+            if price_element_discounted:
+                price_text = price_element_discounted.inner_text().strip() if price_element_discounted else "N/A"
+            else:
+                price_text = price_element.inner_text().strip() if price_element else "N/A"
+
+            price = float(price_text.split(". ")[0].split(" ")[0].strip()) if price_text != "N/A" else None
         
             product_data = {
                 'title': title,
