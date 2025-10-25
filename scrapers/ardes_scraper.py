@@ -32,10 +32,8 @@ class ArdesScraper(PlaywrightBaseScraper):
                 if self.stop_event.is_set():
                     break
 
-             # DEBUG: Check what links exist in each product
                 print(f"DEBUG: Processing product {i+1}/{len(product_elements)}")
             
-                # Try multiple link selectors
                 link_selectors = [
                     'a[href^="/product/"]',
                     'a[href*="/product/"]',
@@ -99,10 +97,10 @@ class ArdesScraper(PlaywrightBaseScraper):
                 price_whole_text = price_whole.inner_text().strip()
                 price_fraction_text = price_fraction.inner_text().strip()
 
-                price_text = f"{price_whole_text}{price_fraction_text} лв"
+                price_text = f"{price_whole_text}{price_fraction_text}"
                 print(f"DEBUG: Combined price text: '{price_text}'")
             
-                price = self._extract_and_convert_price(price_text)
+                price = float(price_text)
             else:
                 price = 0.0
                 print("DEBUG: Price elements not found")

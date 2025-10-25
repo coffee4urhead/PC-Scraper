@@ -1,4 +1,6 @@
 import re
+from time import time
+import random
 from urllib.parse import quote, urljoin
 from .base_scraper import PlaywrightBaseScraper
 
@@ -13,11 +15,11 @@ class AmazonCoUkScraper(PlaywrightBaseScraper):
     def _get_base_url(self, search_term):
         """Generate clean search URL without restrictive parameters"""
         encoded_term = quote(search_term)
-        return f"{self.base_url}s?k={encoded_term}&crid=2J0PCSZU19ONB&sprefix={encoded_term}%2Caps%2C153&ref=nb_sb_noss_2"
+        return f"{self.base_url}s?k={encoded_term}"
 
     def _construct_page_url(self, base_url, search_term, page):
         if page > 1:
-            return f"{self.base_url}s?k={quote(search_term)}&page=2&xpid=L1vzNrANz4x19&crid=2J0PCSZU19ONB&qid=1760797196&sprefix={quote(search_term)}%2Caps%2C153&ref=sr_pg_2"
+            return f"{self.base_url}s?k={quote(search_term)}&page=2"
         return base_url
 
     def _extract_product_links(self, page, page_url):
@@ -28,7 +30,13 @@ class AmazonCoUkScraper(PlaywrightBaseScraper):
         try:
             page.goto(page_url, wait_until='domcontentloaded', timeout=30000)
         
-            page.wait_for_selector('div[data-component-type="s-impression-counter"]', timeout=10000)
+            page.wait_for_selector('div[data-component-type="s-search-result"]', timeout=15000)
+            
+            html = page.content()
+            if "We’re sorry" in html or "Robot Check" in html:
+                print("DEBUG: Amazon.co.uk detected bot — retrying once...")
+                time.sleep(random.uniform(3, 6))
+                page.reload(wait_until="domcontentloaded")
 
             product_elements = page.query_selector_all('div[data-component-type="s-search-result"]')
             print(f"DEBUG: Found {len(product_elements)} product elements")
