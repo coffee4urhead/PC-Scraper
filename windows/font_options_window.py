@@ -13,7 +13,6 @@ class WindowsFontOptions:
         self.preferred_size = tk.IntVar(value=12)
         self.preferred_font = tk.StringVar(value='Comic Sans MS')
 
-        # Make the help window modal (optional)
         self.window.grab_set()
         self.window.transient(parent.root)
 
@@ -164,5 +163,4 @@ class WindowsFontOptions:
             font_size = int(self.preferred_size.get())
             self.preview_label.config(font=(font_family, font_size))
         except ValueError:
-            # Optional: handle invalid size entry
             self.preview_label.config(text="Please enter a valid number for size")

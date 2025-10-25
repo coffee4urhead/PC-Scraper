@@ -35,6 +35,8 @@ from windows.help_window import HelpWindow
 from options_window import OptionsWindow
 from windows.font_options_window import WindowsFontOptions
 
+from tooltips.save_folder_tooltip import Tooltip
+
 import pygame
 import TableMaker as tm
 
@@ -42,8 +44,14 @@ load_dotenv()
 API_KEY = os.getenv("UNI_RATE_API_KEY")
 API_BASE_URL = os.getenv("BASE_URL")
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-image_path = os.path.join(BASE_DIR, "images", "elf.jpg")
+import sys
+def resource_path(relative_path):
+    """Get absolute path to resource, works for dev and PyInstaller."""
+    if hasattr(sys, '_MEIPASS'):
+        base_path = sys._MEIPASS  
+    else:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
 
 class GUI:
     def __init__(self):
@@ -66,12 +74,17 @@ class GUI:
         pygame.mixer.init()
         self.music_playing = False
         
+        icon_path = resource_path("images/Uriy1966-Steel-System-Library-Mac.64.png")  
+        icon_image = Image.open(icon_path)
+        icon_image = icon_image.resize((24, 24), Image.Resampling.LANCZOS)  
+        self.folder_icon = ImageTk.PhotoImage(icon_image)
+
         self._setup_gui()
         self.all_products = []
         self.root.mainloop()
 
     def _setup_gui(self):
-        image = Image.open(image_path)
+        image = Image.open(resource_path('images/elf.jpg'))
         resized_image = image.resize((1200, 700), Image.Resampling.LANCZOS)
         self.background_image = ImageTk.PhotoImage(resized_image)
 
@@ -79,13 +92,13 @@ class GUI:
         canvas.pack(fill="both", expand=True)
         canvas.create_image(0, 0, image=self.background_image, anchor="nw")
 
-        self.label1 = tk.Label(self.root, text="GPU Web Scraper Program",
+        self.label1 = tk.Label(self.root, text="PC parts Web Scraper Program",
                           font=(self.preferred_font, 16, "bold"), bg='white')
-        canvas.create_window(600, 50, anchor="center", window=self.label1)
+        canvas.create_window(620, 50, anchor="center", window=self.label1)
 
-        self.label2 = tk.Label(self.root, text="Search GPU model to scrape information:",
+        self.label2 = tk.Label(self.root, text="Search PC part model to scrape information:",
                           font=(self.preferred_font, 12), bg='white')
-        canvas.create_window(400, 120, anchor="center", window=self.label2)
+        canvas.create_window(200, 120, anchor="center", window=self.label2)
 
         self.entry = tk.Entry(self.root, width=30, font=(self.preferred_font, 13, "italic"))
         self.root.bind("<Return>", self._on_key_press)
@@ -121,9 +134,14 @@ class GUI:
                                        height=1, cursor="hand2", padx=10, pady=5)
         canvas.create_window(750, 180, anchor="center", window=self.play_music_button)
 
-        self.folder_label = tk.Label(self.root, text=f"Save folder: {self.save_folder}",
-                         font=(self.preferred_font, 10), bg='white')
-        canvas.create_window(300, 180, anchor="center", window=self.folder_label)
+        self.folder_label = tk.Label(
+            self.root,
+            image=self.folder_icon,
+            bg='white',
+            cursor="hand2",
+        )
+        canvas.create_window(500, 180, anchor="center", window=self.folder_label)
+        self.folder_tooltip = Tooltip(self.folder_label, self.save_folder)
 
         self.select_folder_button = tk.Button(
             self.root,
@@ -133,7 +151,7 @@ class GUI:
             font=(self.preferred_font, 12, "bold"),
             cursor="hand2"
         )
-        canvas.create_window(100, 180, anchor="center", window=self.select_folder_button)
+        canvas.create_window(400, 180, anchor="center", window=self.select_folder_button)
 
         self.progress_bar = ttk.Progressbar(self.root, orient='horizontal',
                                         length=600, mode='determinate')
@@ -192,7 +210,8 @@ class GUI:
         folder_path = filedialog.askdirectory(title="Select Folder to Save Excel")
         if folder_path:
             self.save_folder = folder_path
-            self.folder_label.config(text=f"Save folder: {self.save_folder}")
+            if hasattr(self, "folder_tooltip"):
+                self.folder_tooltip.text = self.save_folder
 
     def show_about_info(self):
         about_win = self.create_new_window("About", "600x500")
@@ -251,7 +270,7 @@ class GUI:
             self.preferred_theme = theme
             self._apply_theme(theme)
         
-        self.update_fonts()
+        self.update_font_size(self.preferred_size)
         print(f"Settings updated - Currency: {self.currency_symbol}{self.preferred_currency}, Format: {self.currency_format}, Browser: {getattr(self, 'preferred_browser', 'Not set')}, Theme: {getattr(self, 'preferred_theme', 'Not set')}")
 
     def _get_currency_symbol(self, currency_code):
@@ -331,7 +350,7 @@ class GUI:
 
     def _toggle_music(self):
         if not self.music_playing:
-            pygame.mixer.music.load("./Music/scraping-faster.mp3")
+            pygame.mixer.music.load(resource_path("Music/scraping-faster.mp3"))
             pygame.mixer.music.play(loops=-1)
             self.play_music_button.config(text="Pause")
             self.music_playing = True
@@ -489,6 +508,13 @@ class GUI:
             self.root.configure(bg='#2b2b2b')
         elif theme == "Light":
             self.root.configure(bg='white')
+    
+    def update_font_size(self, size):
+        """Update the preferred font size and refresh fonts"""
+        self.preferred_size = size
+        print(f"Font size updated to: {size}")
+        self.update_fonts()
+
     def update_fonts(self):
         """Update fonts for all widgets based on current preferences"""
         try:

@@ -18,13 +18,11 @@ class OptionsWindow:
         self._setup_ui()
 
     def _setup_ui(self):
-        # Currency formatting section
         currency_section = tk.Label(self.window, text="Choose currency formats",
                                     justify=tk.CENTER, padx=20, pady=20,
                                     font=("Comic Sans MS", 12))
         currency_section.pack()
 
-        # Currency formatting options
         default_formatting = tk.Radiobutton(self.window, text="Use default formatting",
                                             variable=self.formatting_of_currency,
                                             value="default")
@@ -34,8 +32,6 @@ class OptionsWindow:
                                            variable=self.formatting_of_currency,
                                            value="custom", command=self._display_text_box)
         custom_formatting.pack()
-
-        # Currency selection combobox
         self.currency_options = [
             ("🇺🇸 USD - US Dollar", "USD"),
             ("🇪🇺 EUR - Euro", "EUR"),
@@ -71,7 +67,6 @@ class OptionsWindow:
             ("🇦🇪 AED - Emirati Dirham", "AED")
         ]
 
-        # Extract display texts for combobox
         currency_display = [opt[0] for opt in self.currency_options]
 
         tk.Label(self.window, text="Select Currency:",
@@ -85,9 +80,8 @@ class OptionsWindow:
             textvariable=self.selected_currency
         )
         self.currency_combobox.pack()
-        self.currency_combobox.current(0)  # Set default to first option
+        self.currency_combobox.current(0)  
 
-        # OK button
         ok_btn = tk.Button(
             self.window,
             text="OK",
@@ -98,11 +92,9 @@ class OptionsWindow:
         ok_btn.pack(pady=20)
 
     def on_ok(self):
-        # Get the selected currency code
         selected_text = self.selected_currency.get()
         currency_code = next((code for text, code in self.currency_options if text == selected_text), "USD")
 
-        # Get the format choice
         format_choice = self.formatting_of_currency.get()
         custom_format = None
 
@@ -118,7 +110,6 @@ class OptionsWindow:
             print(f"Custom format: {custom_format}")
         print(f"Selected currency: {currency_code}")
 
-        # Here you would typically save these preferences
         self.parent.preferred_currency = currency_code
         self.parent.currency_format = custom_format if format_choice == "custom" else "0.00"
 
@@ -126,14 +117,12 @@ class OptionsWindow:
         self.window.destroy()
 
     def _display_text_box(self):
-        # Create frame to contain the custom format widgets
         if hasattr(self, 'custom_format_frame'):
             self.custom_format_frame.destroy()
 
         self.custom_format_frame = tk.Frame(self.window)
         self.custom_format_frame.pack(pady=5)
 
-        # Label for the input field
         format_label = tk.Label(
             self.custom_format_frame,
             text="Enter custom format (e.g., 0.000, 0,000, 0#000):",
@@ -141,7 +130,6 @@ class OptionsWindow:
         )
         format_label.pack(anchor=tk.W)
 
-        # Entry field for custom format
         self.custom_format_entry = tk.Entry(
             self.custom_format_frame,
             width=20,
@@ -149,7 +137,6 @@ class OptionsWindow:
         )
         self.custom_format_entry.pack(anchor=tk.W)
 
-        # Example formats for guidance
         examples_label = tk.Label(
             self.custom_format_frame,
             text="Examples:\n0.000 → 1234.567\n0,000 → 1234,567\n0#000 → 1234#567",
