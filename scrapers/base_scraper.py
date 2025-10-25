@@ -388,7 +388,64 @@ class PlaywrightBaseScraper(ABC):
         except Exception as e:
             print(f"DEBUG: AllStore price extraction error: {e}")
             return None
+
+    def _extract_ezona_bg_price(self, price_text):
+        """Specialized price extraction for Ezona.bg with narrow no-break spaces"""
+        try:
+            if not price_text or price_text == "N/A":
+                return None
+
+            print(f"DEBUG: Ezona.bg raw price text: '{price_text}'")
+            parts = price_text.split(" / ")
+            if not parts:
+                print("DEBUG: Ezona.bg - No parts found after splitting")
+                return None
+            
+            cleaned_text = parts[0].replace('лв', '').strip().replace(",", "")
+            print(f"DEBUG: Ezona.bg cleaned price text: '{cleaned_text}'")
+            
+            price = float(cleaned_text) 
+            print(f"DEBUG: Ezona.bg specific format extracted: {price / 100}")
+            return price / 100
     
+        except Exception as e:
+            print(f"DEBUG: Ezona.bg price extraction error: {e}")
+            return None
+        
+    def _extract_thx_bg_price(self, price_text):
+        """Improved specialized price extraction for Thx.bg with dot/middle-dot separators"""
+
+        try:
+            if not price_text or price_text == "N/A":
+                return None
+
+            print(f"DEBUG: Thx.bg raw price text: '{price_text}'")
+            normalized_parts = [
+                x.replace('·', '.').replace(',', '.').replace(' ', '').replace('лв', '').strip()
+                for x in price_text.split('\n') if x.strip()
+        ]
+            normalized = ' '.join(normalized_parts)
+            print(f"DEBUG: Normalized Thx.bg price text: '{normalized}'")
+
+            match = re.search(r'(\d+(?:\.\d+)?)\s*лв', normalized)
+            if match:
+                price = float(match.group(1))
+                print(f"DEBUG: Extracted Thx.bg price: {price}")
+                return price
+            
+            numbers = re.findall(r'\d+(?:\.\d+)?', normalized)
+            if numbers:
+                price = float(numbers[0])
+                print(f"DEBUG: Fallback extracted Thx.bg price: {price}")
+                return price
+
+            print("DEBUG: No valid Thx.bg price found")
+            return None
+
+        except Exception as e:
+            print(f"DEBUG: Thx.bg price extraction error: {e}")
+            return None
+
     def generate_random_crid(self):
         """Generate random crid for Amazon URLs"""
         return ''.join(random.choices(string.ascii_uppercase + string.digits, k=12))

@@ -72,7 +72,7 @@ class ThxScraper(PlaywrightBaseScraper):
         print(f"DEBUG: Parsing Thx.bg product: {product_url}")
     
         try:
-            page.goto(product_url, wait_until='domcontentloaded', timeout=30000)
+            page.goto(product_url, wait_until='load', timeout=30000)
         
             page.wait_for_selector('div.d-none h1.product-title', timeout=10000)
 
@@ -80,19 +80,21 @@ class ThxScraper(PlaywrightBaseScraper):
             title = title_element.inner_text().strip() if title_element else "N/A"
         
             price = 0.0
+            page.wait_for_selector('div.price-component.bgn', state='visible', timeout=15000)
+            price_elements = page.query_selector_all('div.price-component.bgn')
+
+            if not price_elements:
+                print("DEBUG: No price elements found.")
+                return None
+
+            print(f"DEBUG: Found {len(price_elements)} price elements.")
+
+            price_element = price_elements[-1]
+            price_text = price_element.inner_text().strip()
+
+            print(f"DEBUG: Selected Thx.bg price text: {price_text}")
+            price = self._extract_thx_bg_price(price_text)
         
-            # Strategy 1: Your original approach
-            price_element_int = page.query_selector('div.bgn div.int')
-            price_element_float = page.query_selector('div.bgn div.float')
-        
-            if price_element_int and price_element_float:
-                int_part = price_element_int.inner_text().strip().replace('·', '')
-                float_part = price_element_float.inner_text().strip()
-                price_text = f"{int_part}.{float_part} лв"
-                price = self._extract_and_convert_price(price_text)
-                print(f"DEBUG: Strategy 1 - Extracted price: {price}")
-        
-            # Strategy 2: If strategy 1 fails, look for any price text
             if price == 0.0:
                 price_elements = page.query_selector_all('[class*="price"]')
                 for elem in price_elements:
@@ -104,7 +106,6 @@ class ThxScraper(PlaywrightBaseScraper):
                             print(f"DEBUG: Strategy 2 - Extracted price: {price} from '{text}'")
                             break
         
-            # Strategy 3: Look in meta tags
             if price == 0.0:
                 meta_price = page.query_selector('meta[itemprop="price"]')
                 if meta_price:

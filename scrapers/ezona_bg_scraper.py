@@ -81,7 +81,7 @@ class EZonaScraper(PlaywrightBaseScraper):
         
             price_element = page.query_selector('span.product-price')
             price_text = price_element.inner_text().strip() if price_element else "N/A"
-            price = self._extract_and_convert_price(price_text)
+            price = self._extract_ezona_bg_price(price_text)
         
             product_data = {
                 'title': title,

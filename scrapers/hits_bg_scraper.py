@@ -90,13 +90,13 @@ class HitsBGScraper(PlaywrightBaseScraper):
             if len(price_element_int) >= 2 and len(price_element_float) >= 2:
                 int_part = price_element_int[1].inner_text().strip().replace('·', '').replace(' ', '')
                 float_part = price_element_float[1].inner_text().strip()
-                price_text = f"{int_part}.{float_part} лв"
+                price_text = f"{int_part}.{float_part}"
                 print(f"DEBUG: Combined price text: '{price_text}'")
             else:
                 price_text = "0.00 лв"
                 print("DEBUG: Not enough price elements found, using default")
 
-            price = self._extract_and_convert_price(price_text)
+            price = float(price_text)
         
             product_data = {
                 'title': title,

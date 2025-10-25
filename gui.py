@@ -38,6 +38,8 @@ from windows.font_options_window import WindowsFontOptions
 import pygame
 import TableMaker as tm
 
+# Thnx.bg Pro.bg Technomal PcTech Xtreme.bg Optimal Computers has problems
+
 load_dotenv() 
 API_KEY = os.getenv("UNI_RATE_API_KEY")
 API_BASE_URL = os.getenv("BASE_URL")
