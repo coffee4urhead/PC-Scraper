@@ -87,7 +87,7 @@ class OptimalComputersScraper(PlaywrightBaseScraper):
         
             price_element = page.query_selector('span.product-price')
             price_text = price_element.inner_text().strip() if price_element else "N/A"
-            price = self._extract_and_convert_price(price_text)
+            price = float(price_text.split(" / ")[0].replace("лв.", "").replace(" ", '').strip()) 
         
             product_data = {
                 'title': title,
