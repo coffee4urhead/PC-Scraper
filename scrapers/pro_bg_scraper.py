@@ -93,7 +93,7 @@ class ProBgScraper(PlaywrightBaseScraper):
             else:
                 price_text = "N/A"
             
-            price = self._extract_and_convert_price(price_text)
+            price = float(price_text.split(" ")[0]) if price_text != "N/A" else None
             product_data = {
                 'title': title,
                 'price': price,
