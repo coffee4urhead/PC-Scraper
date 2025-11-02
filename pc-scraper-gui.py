@@ -1,6 +1,20 @@
 import customtkinter as ctk
 from PIL import Image, ImageFilter
-from gui import resource_path
+from tkinter import filedialog
+from dotenv import load_dotenv
+import os
+import threading
+import sys
+
+load_dotenv() 
+
+def resource_path(relative_path):
+    """Get absolute path to resource, works for dev and PyInstaller."""
+    if hasattr(sys, '_MEIPASS'):
+        base_path = sys._MEIPASS  
+    else:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
 
 class GUI(ctk.CTk):
     def __init__(self):
@@ -11,8 +25,25 @@ class GUI(ctk.CTk):
         ctk.set_appearance_mode("system")
         ctk.set_default_color_theme("blue")
 
+        self.selected_website = "Desktop.bg"
+        self.scraper = None
+
+        self.preferred_currency = "BGN"
+        self.currency_format = "0.00"
+        self.currency_symbol = "лв"
+        self.preferred_language = "en-US"
+        self.preferred_size = 12
+        self.preferred_browser = "Chrome"
+        self.preferred_theme = "Light"
+        self.preferred_font = "Times New Roman"
+        self.save_folder = os.path.join(os.path.expanduser("~"), "Desktop")
+        self.selected_pc_part = "GPU"
+
+        self.all_products = []
+
         self.setup_background()
         self.create_panels()
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
     def setup_background(self):
         """Setup the blurred background"""
@@ -65,7 +96,7 @@ class GUI(ctk.CTk):
         )
         left_title.place(relx=0.05, rely=0.02)
 
-        left_entry = ctk.CTkEntry(
+        self.left_entry = ctk.CTkEntry(
             self.left_panel, 
             width=370, 
             height=40, 
@@ -75,11 +106,27 @@ class GUI(ctk.CTk):
             placeholder_text='Enter your desired part here ...',
             placeholder_text_color=("#666666", "#888888")
         )
-        left_entry.place(relx=0.05, rely=0.1) 
+        self.left_entry.place(relx=0.05, rely=0.1) 
         
         options = ['Ardes.bg', 'AllStore.bg', 'Amazon.co.uk', 'Hits.bg', 'Tova.bg', 'Ezona.bg', 'GtComputers.bg', 'Thx.bg', 'Senetic.bg', 'TehnikStore.bg', 'Pro.bg', 'TechnoMall.bg', 'PcTech.bg', 'CyberTrade.bg', 'Xtreme.bg', 'Optimal Computers', 'Plasico.bg', 'PIC.bg', 'jarcomputers.com', 'Desktop.bg', 'Amazon.com', 'Amazon.de']
+        part_options = ["Motherboard", 'PSU', 'RAM', 'GPU', 'Case', 'Fans', 'CPU', 'AIO', 'Air Coolers', 'Extension Cables', 'HDD', 'SATA SSD', 'NVME SSD']
 
-        left_website_select = ctk.CTkComboBox(
+        self.left_part_select = ctk.CTkComboBox(
+            self.left_panel,
+            width=170,  
+            height=40,
+            fg_color=("#FFFFFF", "#1A1A1A"),
+            values=part_options,
+            corner_radius=20,
+            border_color=("#E599F0", "#592461"),  
+            text_color=("black", "white"), 
+            button_color=("#3B8ED0", "#1F6AA5"),  
+            dropdown_fg_color=("#FFFFFF", "#1A1A1A"),  
+            dropdown_text_color=("black", "white")  
+        )
+        self.left_part_select.place(relx=0.6, rely=0.02)
+
+        self.left_website_select = ctk.CTkComboBox(
             self.left_panel,
             width=170,  
             height=40,
@@ -92,10 +139,10 @@ class GUI(ctk.CTk):
             dropdown_fg_color=("#FFFFFF", "#1A1A1A"),  
             dropdown_text_color=("black", "white")  
         )
-        left_website_select.place(relx=0.6, rely=0.1)
+        self.left_website_select.place(relx=0.6, rely=0.1)
         
         bg_image_path = resource_path("images/Uriy1966-Steel-System-Library-Mac.64.png")
-        pil_image = Image.open(bg_image_path).convert("RGB")
+        pil_image = Image.open(bg_image_path)
 
         ctk_image = ctk.CTkImage(
             light_image=pil_image,
@@ -103,30 +150,30 @@ class GUI(ctk.CTk):
             size=(30, 30),
         )
 
-        left_select_folder_button = ctk.CTkButton(
+        self.left_select_folder_button = ctk.CTkButton(
             self.left_panel,
-            width=30,
+            width=40,
             height=40,
-            corner_radius=20,
-            fg_color=("#FFFFFF", "#1A1A1A"),
-            border_color=("#E599F0", "#592461"),
-            hover_color=("#E7E4E4", "#2E2B2B"),
+            corner_radius=10,
+            fg_color=("#FFFFFF", "#454345"),
+            hover_color=("#CBC7C7", "#2E2C2E"),
             image=ctk_image,
+            command=self.ask_save_dir,
             text=''
         )
-        left_select_folder_button.place(relx=0.9, rely=0.1)
+        self.left_select_folder_button.place(relx=0.9, rely=0.1)
 
-        progress_bar = ctk.CTkProgressBar(
+        self.progress_bar = ctk.CTkProgressBar(
             self.left_panel,
-            width=1250,
+            width=1000,
             height=40,
             corner_radius=20,
             fg_color=("#FFFFFF", "#1A1A1A"),
             progress_color=('#B5B9EE', "#8E93E2")
         )
-        progress_bar.place(relx=0.05, rely=0.2)
+        self.progress_bar.place(relx=0.05, rely=0.2)
 
-        left_scrape_button = ctk.CTkButton(
+        self.left_scrape_button = ctk.CTkButton(
             self.left_panel,
             width=150,
             height=45,
@@ -137,7 +184,7 @@ class GUI(ctk.CTk):
             hover_color=("#DFB6E5", "#E599F0"),
             text='Scrape'
         )
-        left_scrape_button.place(relx=0.4, rely=0.3)
+        self.left_scrape_button.place(relx=0.9, rely=0.6)
 
         left_frame_label_container = ctk.CTkFrame(
             self.left_panel, 
@@ -180,6 +227,39 @@ class GUI(ctk.CTk):
         )
         self.options_menu.place(relx=0.9, rely=0.9)
 
+        self.audio_icon_path_on = resource_path("images/sound.png")
+        self.audio_icon_path_off = resource_path("images/no-sound.png")
+        
+        try:
+            audio_image_off = Image.open(self.audio_icon_path_off)
+            self.audio_image_ctk_off = ctk.CTkImage(
+                light_image=audio_image_off, 
+                dark_image=audio_image_off, 
+                size=(40, 40)
+            )
+            
+            audio_image_on = Image.open(self.audio_icon_path_on)
+            self.audio_image_ctk_on = ctk.CTkImage(
+                light_image=audio_image_on, 
+                dark_image=audio_image_on, 
+                size=(40, 40)
+            )
+        except Exception as e:
+            print(f"Error loading audio icons: {e}")
+            self.audio_image_ctk_off = None
+            self.audio_image_ctk_on = None
+
+        self.mute_audio_btn = ctk.CTkButton(
+            self.left_panel,
+            width=40,
+            height=40,
+            fg_color=("#E79CEE", "#C251CC"),
+            hover_color=("#E7A2EE", "#CF55DA"),
+            text='' if self.audio_image_ctk_off else 'Music',
+            image=self.audio_image_ctk_off, 
+        )
+        self.mute_audio_btn.place(relx=0.8, rely=0.9)
+
         right_title = ctk.CTkLabel(
             self.right_panel,
             text="Console", 
@@ -189,7 +269,7 @@ class GUI(ctk.CTk):
         )
         right_title.place(relx=0.05, rely=0.02)
 
-        right_console = ctk.CTkTextbox(
+        self.right_console = ctk.CTkTextbox(
             self.right_panel,
             width=350,
             height=550,
@@ -197,7 +277,30 @@ class GUI(ctk.CTk):
             text_color='green',
             wrap='word',
         )
-        right_console.place(relx=0.05, rely=0.1)
+        self.right_console.place(relx=0.05, rely=0.1)
+    
+    def ask_save_dir(self): 
+        folder_path = filedialog.askdirectory(title="Select Folder to Save Excel")
+        if folder_path:
+            self.save_folder = folder_path
+            if hasattr(self, "folder_tooltip"):
+                self.folder_tooltip.text = self.save_folder
+
+    def on_closing(self):
+        """Cleanup - very simple!"""
+        print("Closing application...")
+        
+        self.music_playing = False
+        
+        if self.scraper:
+            print("Stopping scraper...")
+            try:
+                self.scraper.stop_scraping()
+            except Exception as e:
+                print(f"Error stopping scraper: {e}")
+        
+        print("Destroying window...")
+        self.destroy()
 
 if __name__ == "__main__":
     app = GUI()
