@@ -5,11 +5,36 @@ from dotenv import load_dotenv
 import os
 import threading
 import sys
+import TableMaker as tm
+
+from currency_converter import convert_currency
+
+from scrapers.amazon_com_scraper import AmazonComScraper
+from scrapers.ardes_scraper import ArdesScraper
+from scrapers.jar_computers_scraper import JarComputersScraper
+from scrapers.desktop_bg_scraper import DesktopScraper
+from scrapers.plasico_scraper import PlasicoScraper
+from scrapers.xtreme_bg_scraper import XtremeScraper
+from scrapers.all_store_bg_scraper import AllStoreScraper
+from scrapers.pc_tech_scraper import PcTechBgScraper
+from scrapers.cyber_trade_scraper import CyberTradeScraper
+from scrapers.pic_bg_scraper import PICBgScraper
+from scrapers.hits_bg_scraper import HitsBGScraper
+from scrapers.tehnik_store_scraper import TehnikStoreScraper
+from scrapers.pro_bg_scraper import ProBgScraper
+from scrapers.tova_bg_scraper import TovaBGScraper
+from scrapers.senetic_scraper import SeneticScraper
+from scrapers.gt_computers import GtComputersScraper
+from scrapers.techno_mall_scraper import TechnoMallScraper
+from scrapers.thnx_bg_scraper import ThxScraper
+from scrapers.amazon_co_uk_scraper import AmazonCoUkScraper
+from scrapers.ezona_bg_scraper import EZonaScraper
+from scrapers.amazon_de_scraper import AmazonDeScraper
+from scrapers.optimal_computers_scraper import OptimalComputersScraper
 
 load_dotenv() 
 
 def resource_path(relative_path):
-    """Get absolute path to resource, works for dev and PyInstaller."""
     if hasattr(sys, '_MEIPASS'):
         base_path = sys._MEIPASS  
     else:
@@ -46,7 +71,6 @@ class GUI(ctk.CTk):
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
     def setup_background(self):
-        """Setup the blurred background"""
         bg_image_path = resource_path("images/nebula-star.png")
         pil_image = Image.open(bg_image_path).convert("RGB")
         
@@ -61,8 +85,6 @@ class GUI(ctk.CTk):
         self.bg_label.place(x=0, y=0, relwidth=1, relheight=1)
 
     def create_panels(self):
-        """Create left and right panels with visible rounded corners"""
-
         self.left_panel = ctk.CTkFrame(
             self, 
             width=500, 
@@ -86,7 +108,6 @@ class GUI(ctk.CTk):
         self.add_panel_content()
 
     def add_panel_content(self):
-        """Add some content to demonstrate the rounded corners"""
         left_title = ctk.CTkLabel(
             self.left_panel,
             text="PC Parts Web Scraper",
@@ -98,7 +119,7 @@ class GUI(ctk.CTk):
 
         self.left_entry = ctk.CTkEntry(
             self.left_panel, 
-            width=370, 
+            width=300, 
             height=40, 
             corner_radius=20, 
             text_color=("black", "white"),
@@ -122,10 +143,13 @@ class GUI(ctk.CTk):
             text_color=("black", "white"), 
             button_color=("#3B8ED0", "#1F6AA5"),  
             dropdown_fg_color=("#FFFFFF", "#1A1A1A"),  
-            dropdown_text_color=("black", "white")  
+            dropdown_text_color=("black", "white"),
+            state='readonly',
+            command=self.on_selection
         )
+        self.left_part_select.set("GPU")
         self.left_part_select.place(relx=0.6, rely=0.02)
-
+        
         self.left_website_select = ctk.CTkComboBox(
             self.left_panel,
             width=170,  
@@ -137,8 +161,11 @@ class GUI(ctk.CTk):
             text_color=("black", "white"), 
             button_color=("#3B8ED0", "#1F6AA5"),  
             dropdown_fg_color=("#FFFFFF", "#1A1A1A"),  
-            dropdown_text_color=("black", "white")  
+            dropdown_text_color=("black", "white"),
+            state='readonly',
+            command=self.on_selection_instantiate
         )
+        self.left_website_select.set('Desktop.bg')
         self.left_website_select.place(relx=0.6, rely=0.1)
         
         bg_image_path = resource_path("images/Uriy1966-Steel-System-Library-Mac.64.png")
@@ -168,23 +195,42 @@ class GUI(ctk.CTk):
             width=1000,
             height=40,
             corner_radius=20,
-            fg_color=("#FFFFFF", "#1A1A1A"),
-            progress_color=('#B5B9EE', "#8E93E2")
+            fg_color=("#FFFFFF", "#2C2929"),
+            progress_color=("#EBAEF5", "#E599F0")
         )
         self.progress_bar.place(relx=0.05, rely=0.2)
 
+        self.status_label = ctk.CTkLabel(
+            self.left_panel,
+            text="Ready to scrape...",
+            text_color=("black", "white"),
+            font=("Arial", 12),
+            fg_color="transparent"
+        )
+        self.status_label.place(relx=0.05, rely=0.25)
+
+        search_icon_path = resource_path("images/search.png")
+        search_pil_image = Image.open(search_icon_path)
+
+        search_ctk_image = ctk.CTkImage(
+            light_image=search_pil_image,
+            dark_image=search_pil_image,
+            size=(30, 30),
+        )
         self.left_scrape_button = ctk.CTkButton(
             self.left_panel,
-            width=150,
-            height=45,
+            width=40,
+            height=40,
             corner_radius=20,
             font=('Times New Roman', 30),
             fg_color=("#DFB6E5", "#E599F0"),
             border_color=("#E599F0", "#592461"),
-            hover_color=("#DFB6E5", "#E599F0"),
-            text='Scrape'
+            hover_color=("#C5A0CA", "#DE8DEB"),
+            image=search_ctk_image,
+            text='',
+            command=self._start_scraping
         )
-        self.left_scrape_button.place(relx=0.9, rely=0.6)
+        self.left_scrape_button.place(relx=0.48, rely=0.1)
 
         left_frame_label_container = ctk.CTkFrame(
             self.left_panel, 
@@ -279,18 +325,167 @@ class GUI(ctk.CTk):
         )
         self.right_console.place(relx=0.05, rely=0.1)
     
+    def _on_submit(self):
+        self.left_part_select.configure(state='disabled')
+        self.left_website_select.configure(state='disabled')
+        self._start_scraping()
+
+    def _start_scraping(self):
+        search_term = self.left_entry.get().strip()
+        if search_term:
+            self.right_console.delete(1.0, 'end')
+            self.left_scrape_button.configure(state='disabled')
+            self.progress_bar['value'] = 0
+            self.status_label.configure(text="Starting scrape...")
+            self.scraper.start_scraping(search_term)
+
     def ask_save_dir(self): 
         folder_path = filedialog.askdirectory(title="Select Folder to Save Excel")
         if folder_path:
             self.save_folder = folder_path
             if hasattr(self, "folder_tooltip"):
                 self.folder_tooltip.text = self.save_folder
+    
+    def on_selection(self, selected_value):
+        self.selected_pc_part = selected_value
+        print(f"Selected: {self.selected_pc_part}")
+
+    def on_selection_instantiate(self, selected_value):
+        self.selected_website = selected_value
+    
+        print(f"DEBUG: Initializing scraper for {self.selected_website}")
+    
+        try:
+            if self.selected_website == "Amazon.com":
+                self.scraper = AmazonComScraper('USD', self.update_gui)  
+            elif self.selected_website == "Ardes.bg":
+                self.scraper = ArdesScraper('BGN', self.update_gui)   
+            elif self.selected_website == 'jarcomputers.com':
+                self.scraper = JarComputersScraper('BGN', self.update_gui)  
+            elif self.selected_website == "Desktop.bg":
+                self.scraper = DesktopScraper('BGN', self.update_gui)
+            elif self.selected_website == "Plasico.bg":
+                self.scraper = PlasicoScraper('BGN', self.update_gui)
+            elif self.selected_website == "PIC.bg":
+                self.scraper = PICBgScraper('BGN', self.update_gui)
+            elif self.selected_website == "Optimal Computers":
+                self.scraper = OptimalComputersScraper('BGN', self.update_gui)
+            elif self.selected_website == "Xtreme.bg":
+                self.scraper = XtremeScraper('BGN', self.update_gui)
+            elif self.selected_website == "CyberTrade.bg":
+                self.scraper = CyberTradeScraper('BGN', self.update_gui)
+            elif self.selected_website == "PcTech.bg":
+                self.scraper = PcTechBgScraper('BGN', self.update_gui)
+            elif self.selected_website == "Pro.bg":
+                self.scraper = ProBgScraper('BGN', self.update_gui)
+            elif self.selected_website == "TechnoMall.bg":
+                self.scraper = TechnoMallScraper('BGN', self.update_gui)
+            elif self.selected_website == "TehnikStore.bg":
+                self.scraper = TehnikStoreScraper('BGN', self.update_gui)
+            elif self.selected_website == "AllStore.bg":
+                self.scraper = AllStoreScraper('BGN', self.update_gui)
+            elif self.selected_website == "Senetic.bg":
+                self.scraper = SeneticScraper('BGN', self.update_gui)
+            elif self.selected_website == "Thx.bg":
+                self.scraper = ThxScraper('BGN', self.update_gui)
+            elif self.selected_website == "GtComputers.bg":
+                self.scraper = GtComputersScraper('BGN', self.update_gui)
+            elif self.selected_website == "Ezona.bg":
+                self.scraper = EZonaScraper('BGN', self.update_gui)
+            elif self.selected_website == "Tova.bg":
+                self.scraper = TovaBGScraper('BGN', self.update_gui)
+            elif self.selected_website == "Hits.bg":
+                self.scraper = HitsBGScraper('BGN', self.update_gui)
+            elif self.selected_website == "Amazon.co.uk":
+                self.scraper = AmazonCoUkScraper('GBP', self.update_gui)
+            elif self.selected_website == "Amazon.de":
+                self.scraper = AmazonDeScraper('EUR', self.update_gui)
+
+            print(f"DEBUG: Scraper created successfully for {self.selected_website}")
+           
+        
+        except Exception as e:
+            print(f"DEBUG: Scraper initialization failed: {e}")
+    
+    def update_gui(self, data):
+        if not data:  
+            return
+
+        self.after(0, self._process_scraper_update, data)
+
+    def _process_scraper_update(self, data):
+        try:
+            if data['type'] == 'progress':
+                self.progress_bar.set(data['value'] / 100)
+                self.status_label.configure(
+                    text=f"Scraping... {data['value']}% complete",
+                    text_color="blue"
+                )
+
+            elif data['type'] == 'product':
+                product = data['data']
+                self.all_products.append(product)
+
+                actual_display_text = "\n".join(f"{label} -> {value}" for label, value in product.items()) + f"{'-' * 50}\n"
+
+                display_text = (
+                    f"GPU Found:\n"
+                    f"• Title: {product['title']}\n"
+                    f"• Price: {product.get('price', 'N/A')}\n"
+                    f"• URL: {product.get('url', 'N/A')}\n"
+                    f"• Brand: {product.get('brand', 'N/A')}\n"
+                    f"• GPU model: {product.get('gpu_model', 'N/A')}\n"
+                    f"• Graphics Coprocessor: {product.get('graphics_coprocessor', 'N/A')}\n"
+                    f"• Graphics Ram size: {product.get('graphics_ram_size', 'N/A')}\n"
+                    f"• GPU clock speed: {product.get('gpu_clock_speed', 'N/A')}\n"
+                    f"• Video Output resolution: {product.get('video_output_resolution', 'N/A')}\n"
+                    f"• Page: {data.get('page', 'N/A')}\n"
+                    f"{'-' * 50}\n"
+                )
+                self.right_console.insert('end', actual_display_text)
+                self.right_console.see('end') 
+
+            elif data['type'] == 'error':
+                self.right_console.insert('end', f"ERROR: {data['message']}\n\n")
+                self.status_label.configure(text=f"Error: {data['message']}", text_color="red")
+                self.progress_bar.set(0)
+
+            elif data['type'] == 'complete':
+                self.status_label.configure(text="Scraping completed successfully!", text_color="green")
+
+                for product in self.all_products:
+                    if 'price' in product and product['price'] != "N/A":
+                        try:
+                            price_str = str(product['price']).split('/')[0].strip()
+
+                            for symbol in ["лв", "$", "€", "£", "¥", "USD", "EUR", "BGN", "JPY"]:
+                                price_str = price_str.replace(symbol, "")
+
+                            price_str = price_str.replace(",", "").replace(" ", "")
+                            original_price = float(price_str)
+
+                            converted_price = convert_currency(
+                                original_price,
+                                self.scraper.website_currency, 
+                                self.preferred_currency
+                            )
+
+                            print(f"Converted {original_price} {self.scraper.website_currency} to {converted_price} {self.preferred_currency}")
+                            formatted_price = f"{self.currency_symbol}{converted_price:.2f}"
+                            product['price'] = formatted_price
+                        except Exception as e:
+                            print(f"Currency conversion error for {product['title']}: {str(e)}")
+                            continue
+
+                tm.TableMaker(data=self.all_products, website_scraped=self.selected_website, output_folder=self.save_folder, pc_part_selected=self.selected_pc_part, currency_symbol=self.currency_symbol)
+                self.progress_bar.set(1.0)
+
+        except Exception as e:
+            self.right_console.insert('end', f"GUI Update Error: {str(e)}\n\n")
+            self.status_label.configure(text=f"Update Error: {str(e)}", text_color="red")
 
     def on_closing(self):
-        """Cleanup - very simple!"""
         print("Closing application...")
-        
-        self.music_playing = False
         
         if self.scraper:
             print("Stopping scraper...")
