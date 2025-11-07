@@ -57,10 +57,10 @@ class GUI(ctk.CTk):
         self.currency_format = "0.00"
         self.currency_symbol = "лв"
         self.preferred_language = "en-US"
-        self.preferred_size = 12
+        self.preferred_size = 15
         self.preferred_browser = "Chrome"
         self.preferred_theme = "Light"
-        self.preferred_font = "Times New Roman"
+        self.preferred_font = "Verdana"
         self.save_folder = os.path.join(os.path.expanduser("~"), "Desktop")
         self.selected_pc_part = "GPU"
 
@@ -81,12 +81,21 @@ class GUI(ctk.CTk):
         self.blended_bg = Image.blend(blurred, overlay, alpha=0.2)
         
         self.bg_image = ctk.CTkImage(light_image=self.blended_bg, size=(1200, 700))
-        self.bg_label = ctk.CTkLabel(self, image=self.bg_image, text="")
-        self.bg_label.place(x=0, y=0, relwidth=1, relheight=1)
 
     def create_panels(self):
+        tabview = ctk.CTkTabview(self)
+        tabview.pack(fill="both", expand=True)
+        
+        self.scraper_tab = tabview.add("Scraper")
+        self.settings_tab = tabview.add("Settings")
+        self.info_tab = tabview.add("Info")
+
+        self.apply_background_to_tab(self.scraper_tab)
+        self.apply_background_to_tab(self.settings_tab)
+        self.apply_background_to_tab(self.info_tab)
+
         self.left_panel = ctk.CTkFrame(
-            self, 
+            self.scraper_tab, 
             width=500, 
             height=700,
             fg_color=("#FFFFFF", "#1A1A1A"),
@@ -96,7 +105,7 @@ class GUI(ctk.CTk):
         self.left_panel.place(x=30, y=35, relwidth=0.6, relheight=0.9)
 
         self.right_panel = ctk.CTkFrame(
-            self, 
+            self.scraper_tab, 
             width=400, 
             height=700, 
             fg_color="#1A1A1A",  
@@ -107,12 +116,15 @@ class GUI(ctk.CTk):
 
         self.add_panel_content()
 
+        self.setup_settings_tab(self.settings_tab)
+        self.setup_info_tab(self.info_tab)
+
     def add_panel_content(self):
         left_title = ctk.CTkLabel(
             self.left_panel,
             text="PC Parts Web Scraper",
             text_color="white",
-            font=("Arial", 20, "bold"),
+            font=(self.preferred_font, self.preferred_size, "bold"),
             fg_color="transparent"
         )
         left_title.place(relx=0.05, rely=0.02)
@@ -125,7 +137,8 @@ class GUI(ctk.CTk):
             text_color=("black", "white"),
             fg_color=("#FFFFFF", "#1A1A1A"),
             placeholder_text='Enter your desired part here ...',
-            placeholder_text_color=("#666666", "#888888")
+            placeholder_text_color=("#666666", "#888888"),
+            font=(self.preferred_font, self.preferred_size)
         )
         self.left_entry.place(relx=0.05, rely=0.1) 
         
@@ -145,7 +158,8 @@ class GUI(ctk.CTk):
             dropdown_fg_color=("#FFFFFF", "#1A1A1A"),  
             dropdown_text_color=("black", "white"),
             state='readonly',
-            command=self.on_selection
+            command=self.on_selection,
+            font=(self.preferred_font, self.preferred_size)
         )
         self.left_part_select.set("GPU")
         self.left_part_select.place(relx=0.6, rely=0.02)
@@ -163,7 +177,8 @@ class GUI(ctk.CTk):
             dropdown_fg_color=("#FFFFFF", "#1A1A1A"),  
             dropdown_text_color=("black", "white"),
             state='readonly',
-            command=self.on_selection_instantiate
+            command=self.on_selection_instantiate,
+            font=(self.preferred_font, self.preferred_size)
         )
         self.left_website_select.set('Desktop.bg')
         self.left_website_select.place(relx=0.6, rely=0.1)
@@ -204,7 +219,7 @@ class GUI(ctk.CTk):
             self.left_panel,
             text="Ready to scrape...",
             text_color=("black", "white"),
-            font=("Arial", 12),
+            font=(self.preferred_font, self.preferred_size),
             fg_color="transparent"
         )
         self.status_label.place(relx=0.05, rely=0.25)
@@ -222,7 +237,7 @@ class GUI(ctk.CTk):
             width=40,
             height=40,
             corner_radius=20,
-            font=('Times New Roman', 30),
+            font=(self.preferred_font, 30),
             fg_color=("#DFB6E5", "#E599F0"),
             border_color=("#E599F0", "#592461"),
             hover_color=("#C5A0CA", "#DE8DEB"),
@@ -253,7 +268,7 @@ class GUI(ctk.CTk):
             left_label_container,
             text='Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industrys standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.',
             anchor='w',
-            font=('Times New Roman', 20),
+            font=(self.preferred_font, self.preferred_size),
             justify='left',
             wraplength=450,  
         )
@@ -310,7 +325,7 @@ class GUI(ctk.CTk):
             self.right_panel,
             text="Console", 
             text_color="white",
-            font=("Arial", 20, "bold"),
+            font=(self.preferred_font, 20, "bold"),
             fg_color="transparent"
         )
         right_title.place(relx=0.05, rely=0.02)
@@ -322,9 +337,17 @@ class GUI(ctk.CTk):
             fg_color=("#FFFFFF", "#000000"),
             text_color='green',
             wrap='word',
+            font=(self.preferred_font, self.preferred_size)
         )
         self.right_console.place(relx=0.05, rely=0.1)
-    
+
+    def apply_background_to_tab(self, tab):
+        bg_label = ctk.CTkLabel(tab, image=self.bg_image, text="")
+        bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+        if not hasattr(self, 'tab_backgrounds'):
+            self.tab_backgrounds = []
+        self.tab_backgrounds.append(bg_label)
+
     def _on_submit(self):
         self.left_part_select.configure(state='disabled')
         self.left_website_select.configure(state='disabled')
@@ -346,6 +369,63 @@ class GUI(ctk.CTk):
             if hasattr(self, "folder_tooltip"):
                 self.folder_tooltip.text = self.save_folder
     
+    def update_font_size(self, selected_size):
+        self.preferred_size = int(selected_size)
+        self.update_font_settings()
+
+    def update_font_family(self, selected_family):
+        self.preferred_font = selected_family
+        self.update_font_settings()
+
+    def update_font_settings(self):
+        widgets_to_update = [
+            (self.left_panel.winfo_children(), True),
+            (self.right_panel.winfo_children(), True),
+            (self.look_and_feel_panel.winfo_children(), True)
+        ]
+        
+        for container, recursive in widgets_to_update:
+            self._update_widgets_font(container, recursive)
+
+    def _update_widgets_font(self, widgets, recursive=False):
+        for widget in widgets:
+            if recursive:
+                try:
+                    children = widget.winfo_children()
+                    if children:
+                        self._update_widgets_font(children, True)
+                except:
+                    pass
+            
+            if isinstance(widget, ctk.CTkLabel):
+                current_font = widget.cget("font")
+                if isinstance(current_font, tuple) and len(current_font) >= 2:
+                    weight = current_font[2] if len(current_font) > 2 else "normal"
+                    widget.configure(font=(self.preferred_font, self.preferred_size, weight))
+                else:
+                    widget.configure(font=(self.preferred_font, self.preferred_size))
+                    
+            elif isinstance(widget, ctk.CTkEntry):
+                widget.configure(font=(self.preferred_font, self.preferred_size))
+                
+            elif isinstance(widget, ctk.CTkComboBox):
+                widget.configure(font=(self.preferred_font, self.preferred_size))
+                
+            elif isinstance(widget, ctk.CTkTextbox):
+                widget.configure(font=(self.preferred_font, self.preferred_size))
+                
+            elif isinstance(widget, ctk.CTkButton):
+                current_font = widget.cget("font")
+                if isinstance(current_font, tuple) and len(current_font) >= 2:
+                    size = current_font[1] if current_font[1] != 30 else 30
+                    widget.configure(font=(self.preferred_font, size))
+                else:
+                    widget.configure(font=(self.preferred_font, self.preferred_size))
+
+    def update_language(self, selected_langauge):
+        self.preferred_language = selected_langauge
+        print(f"Updated language to: {self.preferred_language}")
+
     def on_selection(self, selected_value):
         self.selected_pc_part = selected_value
         print(f"Selected: {self.selected_pc_part}")
@@ -483,6 +563,268 @@ class GUI(ctk.CTk):
         except Exception as e:
             self.right_console.insert('end', f"GUI Update Error: {str(e)}\n\n")
             self.status_label.configure(text=f"Update Error: {str(e)}", text_color="red")
+
+    def setup_settings_tab(self, tab):
+        self.look_and_feel_panel = ctk.CTkFrame(
+            self.settings_tab, 
+            width=400,
+            height=700,
+            fg_color="#1A1A1A",  
+            border_width=2,
+            border_color=("#FFFFFF", "#1A1A1A"),
+        )
+        self.look_and_feel_panel.place(x=770, y=35, relwidth=0.33, relheight=0.9)
+
+        look_and_feel_label = ctk.CTkLabel(
+            self.look_and_feel_panel,
+            text="Look and Feel", 
+            text_color="white",
+            font=(self.preferred_font, 20, "bold"),
+            fg_color="transparent"
+        )
+        look_and_feel_label.place(relx=0.35, rely=0.02)
+        
+        font_label = ctk.CTkLabel(
+            self.look_and_feel_panel,
+            text="Font settings", 
+            text_color="white",
+            font=(self.preferred_font, 20, "bold"),
+            fg_color="transparent"
+        )
+        font_label.place(relx=0.1, rely=0.1)
+
+        font_frame = ctk.CTkFrame(
+            self.settings_tab, 
+            width=400, 
+            height=700, 
+            fg_color="#1A1A1A",
+            border_width=2,
+            border_color=("#BA61C3", "#CF55DA"),
+            corner_radius=12,
+        )
+        font_frame.place(x=790, y=130, relwidth=0.3, relheight=0.23)
+
+        font_family = ctk.CTkLabel(
+            font_frame,
+            text="Font Family", 
+            text_color="white",
+            font=(self.preferred_font, 15, "bold"),
+            fg_color="transparent"
+        )
+        font_family.place(relx=0.1, rely=0.1)
+        
+        font_family_options = [
+            "Arial",
+            "Helvetica", 
+            "Times New Roman",
+            "Courier New",
+            "Verdana",
+            "Georgia",
+            "Tahoma",
+            "Trebuchet MS",
+            "Comic Sans MS",
+            "Impact",
+            "Lucida Console",
+            "Lucida Sans Unicode",
+            "Palatino Linotype",
+            "Garamond",
+            "Bookman Old Style",
+            "Arial Black",
+            "Symbol",
+            "Wingdings",
+            "MS Sans Serif",
+            "MS Serif",
+            "Segoe UI",
+            "Calibri",
+            "Cambria",
+            "Candara",
+            "Consolas",
+            "Constantia",
+            "Corbel",
+            "Franklin Gothic Medium",
+            "Geneva",
+            "Courier",
+            "Monaco",
+            "Andale Mono",
+            "Monospace",
+            "Sans-serif",
+            "Serif"
+        ]
+
+        font_family_select = ctk.CTkComboBox(
+            font_frame,
+            width=170,  
+            height=40,
+            fg_color=("#FFFFFF", "#1A1A1A"),
+            values=font_family_options,
+            corner_radius=20,
+            border_color=("#E599F0", "#592461"),  
+            text_color=("black", "white"), 
+            button_color=("#3B8ED0", "#1F6AA5"),  
+            dropdown_fg_color=("#FFFFFF", "#1A1A1A"),  
+            dropdown_text_color=("black", "white"),
+            state='readonly',
+            command=self.update_font_family,
+            font=(self.preferred_font, self.preferred_size)
+        )
+        font_family_select.set("Verdana")
+        font_family_select.place(relx=0.4, rely=0.05)
+
+        language_label = ctk.CTkLabel(
+            font_frame,
+            text="Language", 
+            text_color="white",
+            font=(self.preferred_font, 15, "bold"),
+            fg_color="transparent"
+        )
+        language_label.place(relx=0.1, rely=0.4)
+
+        languages = [
+                "af-ZA",  # Afrikaans - South Africa
+                "ar-SA",  # Arabic - Saudi Arabia
+                "bg-BG",  # Bulgarian - Bulgaria
+                "ca-ES",  # Catalan - Spain
+                "cs-CZ",  # Czech - Czech Republic
+                "da-DK",  # Danish - Denmark
+                "de-DE",  # German - Germany
+                "el-GR",  # Greek - Greece
+                "en-US",  # English - United States
+                "en-GB",  # English - United Kingdom
+                "es-ES",  # Spanish - Spain
+                "es-MX",  # Spanish - Mexico
+                "et-EE",  # Estonian - Estonia
+                "fi-FI",  # Finnish - Finland
+                "fr-FR",  # French - France
+                "he-IL",  # Hebrew - Israel
+                "hi-IN",  # Hindi - India
+                "hr-HR",  # Croatian - Croatia
+                "hu-HU",  # Hungarian - Hungary
+                "id-ID",  # Indonesian - Indonesia
+                "it-IT",  # Italian - Italy
+                "ja-JP",  # Japanese - Japan
+                "ko-KR",  # Korean - South Korea
+                "lt-LT",  # Lithuanian - Lithuania
+                "lv-LV",  # Latvian - Latvia
+                "nb-NO",  # Norwegian Bokmål - Norway
+                "nl-NL",  # Dutch - Netherlands
+                "pl-PL",  # Polish - Poland
+                "pt-BR",  # Portuguese - Brazil
+                "pt-PT",  # Portuguese - Portugal
+                "ro-RO",  # Romanian - Romania
+                "ru-RU",  # Russian - Russia
+                "sk-SK",  # Slovak - Slovakia
+                "sl-SI",  # Slovenian - Slovenia
+                "sr-RS",  # Serbian - Serbia
+                "sv-SE",  # Swedish - Sweden
+                "th-TH",  # Thai - Thailand
+                "tr-TR",  # Turkish - Turkey
+                "uk-UA",  # Ukrainian - Ukraine
+                "vi-VN",  # Vietnamese - Vietnam
+                "zh-CN",  # Chinese (Simplified) - China
+                "zh-TW",  # Chinese (Traditional) - Taiwan
+        ]
+        language_select = ctk.CTkComboBox(
+            font_frame,
+            width=170,  
+            height=40,
+            fg_color=("#FFFFFF", "#1A1A1A"),
+            values=languages,
+            corner_radius=20,
+            border_color=("#E599F0", "#592461"),  
+            text_color=("black", "white"), 
+            button_color=("#3B8ED0", "#1F6AA5"),  
+            dropdown_fg_color=("#FFFFFF", "#1A1A1A"),  
+            dropdown_text_color=("black", "white"),
+            state='readonly',
+            command=self.update_language,
+            font=(self.preferred_font, self.preferred_size)
+        )
+        language_select.set("en-US")
+        language_select.place(relx=0.4, rely=0.35)
+        
+        font_size_label = ctk.CTkLabel(
+            font_frame,
+            text="Font Size", 
+            text_color="white",
+            font=(self.preferred_font, 15, "bold"),
+            fg_color="transparent"
+        )
+        font_size_label.place(relx=0.1, rely=0.7)
+        font_size_options = [str(i) for i in range(25)]
+        
+        font_size_select = ctk.CTkComboBox(
+            font_frame,
+            width=170,  
+            height=40,
+            fg_color=("#FFFFFF", "#1A1A1A"),
+            values=font_size_options,
+            corner_radius=20,
+            border_color=("#E599F0", "#592461"),  
+            text_color=("black", "white"), 
+            button_color=("#3B8ED0", "#1F6AA5"),  
+            dropdown_fg_color=("#FFFFFF", "#1A1A1A"),  
+            dropdown_text_color=("black", "white"),
+            state='readonly',
+            command=self.update_font_size,
+            font=(self.preferred_font, self.preferred_size)
+        )
+        font_size_select.set("15")
+        font_size_select.place(relx=0.4, rely=0.65)
+
+    def setup_info_tab(self, tab):
+        info_label = ctk.CTkLabel(tab, text="Application Information", 
+                            font=(self.preferred_font, 20, "bold"))
+        info_label.pack(pady=20)
+    
+        info_text = ctk.CTkTextbox(tab, wrap="word", font=(self.preferred_font, self.preferred_size))
+        info_text.pack(fill="both", expand=True, padx=20, pady=10)
+    
+        info_content = """
+    PC Parts Web Scraper
+
+    This application allows you to scrape PC parts prices from various online stores.
+
+    Features:
+    - Scrape prices from multiple websites
+    - Compare prices across different currencies
+    - Export results to Excel
+    - Customizable settings
+
+    Supported Websites:
+    - Desktop.bg
+    - Ardes.bg
+    - Amazon.com
+    - Amazon.co.uk
+    - And many more...
+
+    Instructions:
+    1. Select the type of PC part you want to search for
+    2. Choose the website to scrape
+    3. Enter your search term
+    4. Click the search button to start scraping
+    5. View results in the console and exported Excel file
+
+    Note: Some websites may have anti-bot protection that could affect scraping results.
+    """
+        info_text.insert("1.0", info_content)
+        info_text.configure(state="disabled")
+
+    def on_currency_change(self, currency):
+        self.preferred_currency = currency
+        currency_symbols = {
+            "BGN": "лв",
+            "USD": "$", 
+            "EUR": "€",
+            "GBP": "£"
+        }
+        self.currency_symbol = currency_symbols.get(currency, "лв")
+
+    def on_theme_change(self, theme):
+        self.preferred_theme = theme
+        ctk.set_appearance_mode(theme.lower())
+
+    def on_browser_change(self, browser):
+        self.preferred_browser = browser
 
     def on_closing(self):
         print("Closing application...")
