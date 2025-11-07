@@ -213,7 +213,7 @@ class GUI(ctk.CTk):
             fg_color=("#FFFFFF", "#2C2929"),
             progress_color=("#EBAEF5", "#E599F0")
         )
-        self.progress_bar.place(relx=0.05, rely=0.2)
+        self.progress_bar.place(relx=0.05, rely=0.2, relwidth=0.9)
 
         self.status_label = ctk.CTkLabel(
             self.left_panel,
@@ -381,7 +381,8 @@ class GUI(ctk.CTk):
         widgets_to_update = [
             (self.left_panel.winfo_children(), True),
             (self.right_panel.winfo_children(), True),
-            (self.look_and_feel_panel.winfo_children(), True)
+            (self.look_and_feel_panel.winfo_children(), True),
+            (self.customize_ui_colors_dialog.winfo_children(), True),
         ]
         
         for container, recursive in widgets_to_update:
@@ -651,7 +652,7 @@ class GUI(ctk.CTk):
             "Serif"
         ]
 
-        font_family_select = ctk.CTkComboBox(
+        self.font_family_select = ctk.CTkComboBox(
             font_frame,
             width=170,  
             height=40,
@@ -667,8 +668,8 @@ class GUI(ctk.CTk):
             command=self.update_font_family,
             font=(self.preferred_font, self.preferred_size)
         )
-        font_family_select.set("Verdana")
-        font_family_select.place(relx=0.4, rely=0.05)
+        self.font_family_select.set("Verdana")
+        self.font_family_select.place(relx=0.4, rely=0.05)
 
         language_label = ctk.CTkLabel(
             font_frame,
@@ -723,7 +724,7 @@ class GUI(ctk.CTk):
                 "zh-CN",  # Chinese (Simplified) - China
                 "zh-TW",  # Chinese (Traditional) - Taiwan
         ]
-        language_select = ctk.CTkComboBox(
+        self.language_select = ctk.CTkComboBox(
             font_frame,
             width=170,  
             height=40,
@@ -739,8 +740,8 @@ class GUI(ctk.CTk):
             command=self.update_language,
             font=(self.preferred_font, self.preferred_size)
         )
-        language_select.set("en-US")
-        language_select.place(relx=0.4, rely=0.35)
+        self.language_select.set("en-US")
+        self.language_select.place(relx=0.4, rely=0.35)
         
         font_size_label = ctk.CTkLabel(
             font_frame,
@@ -750,9 +751,9 @@ class GUI(ctk.CTk):
             fg_color="transparent"
         )
         font_size_label.place(relx=0.1, rely=0.7)
-        font_size_options = [str(i) for i in range(25)]
+        font_size_options = [str(i) for i in range(18)]
         
-        font_size_select = ctk.CTkComboBox(
+        self.font_size_select = ctk.CTkComboBox(
             font_frame,
             width=170,  
             height=40,
@@ -768,9 +769,343 @@ class GUI(ctk.CTk):
             command=self.update_font_size,
             font=(self.preferred_font, self.preferred_size)
         )
-        font_size_select.set("15")
-        font_size_select.place(relx=0.4, rely=0.65)
+        self.font_size_select.set("15")
+        self.font_size_select.place(relx=0.4, rely=0.65)
+    
+        self.customize_ui_colors_dialog = ctk.CTkFrame(
+            self.settings_tab, 
+            width=400,
+            height=1000,
+            fg_color=("#1A1A1A", "#2D2D2D"),  
+            border_width=2,
+            border_color=("#3A3A3A", "#4A4A4A"),
+            corner_radius=15
+        )
+        self.customize_ui_colors_dialog.place(x=25, y=35, relwidth=0.6, relheight=0.9)
+    
+        self.setup_ui_colors_customization()
 
+    def setup_ui_colors_customization(self):
+        title_label = ctk.CTkLabel(
+            self.customize_ui_colors_dialog,
+            text="UI Colors & Theme",
+            text_color=("black", "white"),
+            font=(self.preferred_font, 22, "bold"),
+            fg_color="transparent"
+        )
+        title_label.place(relx=0.05, rely=0.05)
+    
+        separator = ctk.CTkFrame(
+            self.customize_ui_colors_dialog,
+            height=2,
+            fg_color=("#E0E0E0", "#404040")
+        )
+        separator.place(relx=0.05, rely=0.12, relwidth=0.9)
+    
+        theme_section_label = ctk.CTkLabel(
+            self.customize_ui_colors_dialog,
+            text="Theme Selection",
+            text_color=("black", "white"),
+            font=(self.preferred_font, 16, "bold"),
+            fg_color="transparent"
+        )
+        theme_section_label.place(relx=0.05, rely=0.15)
+    
+        theme_button_frame = ctk.CTkFrame(
+            self.customize_ui_colors_dialog,
+            fg_color="transparent",
+            height=50
+        )
+        theme_button_frame.place(relx=0.05, rely=0.22, relwidth=0.9)
+    
+        self.light_theme_btn = ctk.CTkButton(
+            theme_button_frame,
+            text="🌞 Light",
+            font=(self.preferred_font, 14),
+            fg_color=("#F0F0F0", "#D0D0D0"),
+            text_color="black",
+            hover_color=("#E0E0E0", "#C0C0C0"),
+            border_width=2,
+            border_color=("#3B8ED0", "#1F6AA5"),
+            command=lambda: self.change_theme("Light")
+        )
+        self.light_theme_btn.pack(side="left", padx=(0, 10))
+    
+        self.dark_theme_btn = ctk.CTkButton(
+            theme_button_frame,
+            text="🌙 Dark", 
+            font=(self.preferred_font, 14),
+            fg_color=("#2B2B2B", "#1A1A1A"),
+            text_color="white",
+            hover_color=("#3B3B3B", "#2A2A2A"),
+            border_width=2,
+            border_color=("#3B8ED0", "#1F6AA5"),
+            command=lambda: self.change_theme("Dark")
+        )
+        self.dark_theme_btn.pack(side="left", padx=(0, 10))
+    
+        self.system_theme_btn = ctk.CTkButton(
+            theme_button_frame,
+            text="💻 System",
+            font=(self.preferred_font, 14),
+            fg_color=("#3B8ED0", "#1F6AA5"),
+            text_color="white", 
+            hover_color=("#357ABD", "#1A5A8A"),
+            border_width=2,
+            border_color=("#3B8ED0", "#1F6AA5"),
+            command=lambda: self.change_theme("System")
+        )
+        self.system_theme_btn.pack(side="left")
+    
+        colors_separator = ctk.CTkFrame(
+            self.customize_ui_colors_dialog,
+            height=2,
+            fg_color=("#E0E0E0", "#404040")
+        )
+        colors_separator.place(relx=0.05, rely=0.35, relwidth=0.9)
+    
+        colors_section_label = ctk.CTkLabel(
+            self.customize_ui_colors_dialog,
+            text="Custom Colors",
+            text_color=("black", "white"),
+            font=(self.preferred_font, self.preferred_size, "bold"),
+            fg_color="transparent"
+        )
+        colors_section_label.place(relx=0.05, rely=0.4)
+    
+        color_picker_frame = ctk.CTkFrame(
+            self.customize_ui_colors_dialog,
+            fg_color="transparent",
+            height=120
+        )
+        color_picker_frame.place(relx=0.05, rely=0.47, relwidth=0.9)
+    
+        primary_color_label = ctk.CTkLabel(
+            color_picker_frame,
+            text="Primary Color:",
+            text_color=("black", "white"),
+            font=(self.preferred_font, self.preferred_size),
+            fg_color="transparent"
+        )
+        primary_color_label.grid(row=0, column=0, sticky="w", padx=(0, 20), pady=(0, 10))
+    
+        self.primary_color_display = ctk.CTkFrame(
+            color_picker_frame,
+            width=40,
+            height=40,
+            fg_color="#3B8ED0",
+            corner_radius=8,
+            border_width=2,
+            border_color=("white", "black")
+        )
+        self.primary_color_display.grid(row=0, column=1, padx=(0, 20), pady=(0, 10))
+    
+        self.primary_color_btn = ctk.CTkButton(
+            color_picker_frame,
+            text="Pick Primary",
+            font=(self.preferred_font, self.preferred_size),
+            width=100,
+            height=32,
+            fg_color=("#3B8ED0", "#1F6AA5"),
+            command=self.pick_primary_color,
+        )
+        self.primary_color_btn.grid(row=0, column=2, pady=(0, 10))
+    
+        secondary_color_label = ctk.CTkLabel(
+            color_picker_frame,
+            text="Secondary Color:",
+            height=32,
+            text_color=("black", "white"), 
+            font=(self.preferred_font, 14),
+            fg_color="transparent"
+        )
+        secondary_color_label.grid(row=1, column=0, sticky="w", padx=(0, 20), pady=(10, 0))
+    
+        self.secondary_color_display = ctk.CTkFrame(
+            color_picker_frame,
+            width=40,
+            height=40,
+            fg_color="#1F6AA5",
+            corner_radius=8,
+            border_width=2,
+            border_color=("white", "black")
+        )
+        self.secondary_color_display.grid(row=1, column=1, padx=(0, 20), pady=(10, 0))
+    
+        self.secondary_color_btn = ctk.CTkButton(
+            color_picker_frame,
+            text="Pick Secondary", 
+            font=(self.preferred_font, self.preferred_size),
+            width=100,
+            fg_color=("#3B8ED0", "#1F6AA5"),
+            command=self.pick_secondary_color
+        )
+        self.secondary_color_btn.grid(row=1, column=2, pady=(10, 0))
+    
+        preset_colors_label = ctk.CTkLabel(
+            color_picker_frame,
+            text="Quick Presets:",
+            text_color=("black", "white"),
+            font=(self.preferred_font, self.preferred_size),
+            fg_color="transparent"
+        )
+        preset_colors_label.grid(row=2, column=0, sticky="w", padx=(0, 20), pady=(15, 0))
+    
+        preset_colors_frame = ctk.CTkFrame(
+            color_picker_frame,
+            fg_color="transparent",
+            height=30
+        )
+        preset_colors_frame.grid(row=2, column=1, columnspan=2, sticky="w", pady=(15, 0))
+    
+        preset_colors = [
+            ("#3B8ED0", "#1F6AA5"),  # Blue
+            ("#2E8B57", "#228B22"),  # Green  
+            ("#FF6B6B", "#FF4757"),  # Red
+            ("#FFA500", "#FF8C00"),  # Orange
+            ("#9370DB", "#8A2BE2"),  # Purple
+            ("#20B2AA", "#008B8B")   # Teal
+        ]
+    
+        for i, (primary, secondary) in enumerate(preset_colors):
+            preset_btn = ctk.CTkButton(
+                preset_colors_frame,
+                text="",
+                width=25,
+                height=25,
+                fg_color=primary,
+                hover_color=secondary,
+                command=lambda p=primary, s=secondary: self.apply_preset_colors(p, s)
+            )
+            preset_btn._is_preset_button = True
+            preset_btn.pack(side="left", padx=(0, 5))
+    
+        self.primary_color = "#3B8ED0"
+        self.secondary_color = "#1F6AA5"
+
+        reset_button = ctk.CTkButton(
+            self.customize_ui_colors_dialog,
+            text="Reset to Defaults",
+            font=(self.preferred_font, 14),
+            fg_color=("#FF6B6B", "#FF4757"),
+            hover_color=("#FF5252", "#FF3838"),
+            text_color="white",
+            height=40,
+            command=self.reset_to_defaults
+        )
+        reset_button.place(relx=0.05, rely=0.92, relwidth=0.9)
+    
+    def reset_to_defaults(self):
+        self.primary_color = "#3B8ED0"
+        self.secondary_color = "#1F6AA5"
+    
+        self.primary_color_display.configure(fg_color=self.primary_color)
+        self.secondary_color_display.configure(fg_color=self.secondary_color)
+    
+        self.preferred_theme = "System"
+        ctk.set_appearance_mode("system")
+    
+        self.preferred_font = "Verdana"
+        self.preferred_size = 15
+    
+        if hasattr(self, 'font_family_select'):
+            self.font_family_select.set("Verdana")
+        if hasattr(self, 'font_size_select'):
+            self.font_size_select.set("15")
+    
+        self.apply_custom_colors()
+        self.update_font_settings()
+    
+    print("Reset all settings to defaults")
+    def change_theme(self, theme):
+        self.preferred_theme = theme
+        ctk.set_appearance_mode(theme.lower())
+        print(f"Theme changed to: {theme}")
+
+    def pick_primary_color(self):
+        color = self.ask_color()
+        if color:
+            self.primary_color = color
+            self.primary_color_display.configure(fg_color=color)
+            self.apply_custom_colors()
+
+    def pick_secondary_color(self):
+        color = self.ask_color()
+        if color:
+            self.secondary_color = color
+            self.secondary_color_display.configure(fg_color=color)
+            self.apply_custom_colors()
+
+    def ask_color(self):
+        try:
+            from tkinter import colorchooser
+            color = colorchooser.askcolor(title="Choose color")[1]
+            return color
+        except:
+            print("Color chooser not available")
+            return None
+
+    def apply_preset_colors(self, primary, secondary):
+        self.primary_color = primary
+        self.secondary_color = secondary
+        self.primary_color_display.configure(fg_color=primary)
+        self.secondary_color_display.configure(fg_color=secondary)
+        self.apply_custom_colors()
+
+    def apply_custom_colors(self):
+        try:
+            self.update_widget_colors()
+            print(f"Applied custom colors: Primary {self.primary_color}, Secondary {self.secondary_color}")
+        except Exception as e:
+            print(f"Error applying custom colors: {e}")
+
+    def update_widget_colors(self):
+        for widget in self.winfo_children():
+            self._update_widget_colors_recursive(widget)
+
+    def _update_widget_colors_recursive(self, widget):
+        if hasattr(widget, '_is_preset_button') and widget._is_preset_button:
+            return
+    
+        if isinstance(widget, ctk.CTkButton):
+            widget.configure(fg_color=self.primary_color, hover_color=self.secondary_color)
+
+        if isinstance(widget, ctk.CTkProgressBar):
+            widget.configure(fg_color=self.primary_color, progress_color=self.secondary_color)
+
+        if isinstance(widget, ctk.CTkComboBox):
+            widget.configure(button_color=self.primary_color, button_hover_color=self.secondary_color)
+
+        if isinstance(widget, ctk.CTkFrame):
+            widget.configure(border_color=self.primary_color)
+
+        for child in widget.winfo_children():
+            self._update_widget_colors_recursive(child)
+
+    def create_custom_theme(self):
+        theme_path = "custom_theme.json"
+        theme_data = {
+            "CTk": {
+                "fg_color": ["#DCE4EE", "#1B1B1B"],
+                "top_fg_color": ["#DCE4EE", "#1B1B1B"],
+                "text_color": ["#000000", "#FFFFFF"]
+            },
+            "CTkButton": {
+                "corner_radius": 8,
+                "border_width": 0,
+                "fg_color": [self.primary_color, self.primary_color],
+                "hover_color": [self.secondary_color, self.secondary_color],
+                "text_color": ["#FFFFFF", "#FFFFFF"],
+                "border_color": ["#3E454A", "#949A9F"]
+            }
+        }
+    
+        import json
+        with open(theme_path, 'w') as f:
+            json.dump(theme_data, f, indent=4)
+    
+        return theme_path
+    
     def setup_info_tab(self, tab):
         info_label = ctk.CTkLabel(tab, text="Application Information", 
                             font=(self.preferred_font, 20, "bold"))
