@@ -39,19 +39,34 @@ class ScraperOptionsWindow(ctk.CTkToplevel):
         self.headless_switch.pack(anchor="w", padx=5, pady=(10, 15))
 
         ctk.CTkLabel(self.scroll_frame, text="Max Pages to Scrape:").pack(anchor="w", padx=5)
-        self.max_pages_slider = ctk.CTkSlider(self.scroll_frame, from_=1, to=100, number_of_steps=99)
+        value_frame = ctk.CTkFrame(self.scroll_frame)
+        value_frame.pack(fill="x", padx=5, pady=(0, 5))
+
+        self.max_pages_slider = ctk.CTkSlider(
+            value_frame, from_=1, to=100, number_of_steps=99, command=self.update_max_pages_value
+        )
         self.max_pages_slider.set(10)
-        self.max_pages_slider.pack(padx=5, pady=5, fill="x")
+        self.max_pages_slider.pack(side="left", fill="x", expand=True)
+        self.max_pages_count = ctk.CTkLabel(value_frame, text="10")
+        self.max_pages_count.pack(side="left", padx=10)
 
         ctk.CTkLabel(self.scroll_frame, text="Delay Between Requests (seconds):").pack(anchor="w", padx=5)
-        self.delay_slider = ctk.CTkSlider(self.scroll_frame, from_=0.5, to=10, number_of_steps=95)
+        delay_frame = ctk.CTkFrame(self.scroll_frame)
+        delay_frame.pack(fill="x", padx=5, pady=(0, 5))
+        self.delay_slider = ctk.CTkSlider(delay_frame, from_=0.5, to=10, number_of_steps=95, command=self.update_delay_value)
         self.delay_slider.set(2)
-        self.delay_slider.pack(padx=5, pady=5, fill="x")
+        self.delay_slider.pack(side="left", fill="x", expand=True)
+        self.delay_value_label = ctk.CTkLabel(delay_frame, text="2.0s")
+        self.delay_value_label.pack(side="left", padx=10)
 
         ctk.CTkLabel(self.scroll_frame, text="Random Delay Multiplier Range:").pack(anchor="w", padx=5)
-        self.random_slider = ctk.CTkSlider(self.scroll_frame, from_=1.0, to=3.0, number_of_steps=20)
+        rand_frame = ctk.CTkFrame(self.scroll_frame)
+        rand_frame.pack(fill="x", padx=5, pady=(0, 5))
+        self.random_slider = ctk.CTkSlider(rand_frame, from_=1.0, to=3.0, number_of_steps=20, command=self.update_random_value)
         self.random_slider.set(1.5)
-        self.random_slider.pack(padx=5, pady=5, fill="x")
+        self.random_slider.pack(side="left", fill="x", expand=True)
+        self.random_value_label = ctk.CTkLabel(rand_frame, text="1.5×")
+        self.random_value_label.pack(side="left", padx=10)
 
         ctk.CTkLabel(
             self.scroll_frame, text="Filtering Options", font=ctk.CTkFont(size=18, weight="bold")
@@ -111,6 +126,16 @@ class ScraperOptionsWindow(ctk.CTkToplevel):
             command=self.save_and_close
         )
         self.save_close_button.pack(side="left", expand=True, fill="x", padx=(5, 0))
+
+    def update_max_pages_value(self, value):
+        self.max_pages_count.configure(text=f"{int(value)}")
+
+    def update_delay_value(self, value):
+        self.delay_value_label.configure(text=f"{float(value):.1f}s")
+
+    def update_random_value(self, value):
+        self.random_value_label.configure(text=f"{float(value):.2f}×")
+
 
     # ====================================================
     # Helper: collect all settings in a dict
