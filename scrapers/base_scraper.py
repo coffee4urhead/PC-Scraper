@@ -19,6 +19,16 @@ class PlaywrightBaseScraper(ABC):
         self.max_pages = 10
         self.current_progress = 0
         
+        self.preferred_browser = "Chrome"
+        self.headless = False
+        self.random_delay_multiplier = 1.5
+        self.min_price = None
+        self.max_price = None
+        self.exclude_keywords = ""
+        self.output_format = "JSON"
+        self.debug_logs = False
+        self.auto_close = True
+
         self.driver = None
         self.playwright = None
         

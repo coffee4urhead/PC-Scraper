@@ -7,6 +7,8 @@ import threading
 import sys
 import TableMaker as tm
 
+from windows.scraper_options_window import ScraperOptionsWindow
+
 from currency_converter import convert_currency
 
 from scrapers.amazon_com_scraper import AmazonComScraper
@@ -51,7 +53,7 @@ class GUI(ctk.CTk):
         ctk.set_default_color_theme("blue")
 
         self.selected_website = "Desktop.bg"
-        self.scraper = None
+        self.scraper = DesktopScraper('BGN', self.update_gui)
 
         self.preferred_currency = "BGN"
         self.currency_format = "0.00"
@@ -65,7 +67,8 @@ class GUI(ctk.CTk):
         self.selected_pc_part = "GPU"
 
         self.all_products = []
-
+        
+        self.scraper_options = None
         self.setup_background()
         self.create_panels()
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -284,7 +287,8 @@ class GUI(ctk.CTk):
             fg_color=("#E79CEE", "#C251CC"),
             hover_color=("#E7A2EE", "#CF55DA"),
             text='',
-            image=gearwheel_image_ctk
+            image=gearwheel_image_ctk,
+            command=self.get_scraper_windows_options
         )
         self.options_menu.place(relx=0.9, rely=0.9)
 
@@ -388,6 +392,12 @@ class GUI(ctk.CTk):
         for container, recursive in widgets_to_update:
             self._update_widgets_font(container, recursive)
 
+    def get_scraper_windows_options(self):
+        if self.scraper_options is None or not self.scraper_options.winfo_exists():
+            self.scraper_options = ScraperOptionsWindow(self, scraper=self.scraper)
+        else:
+            self.scraper_options.focus()
+    
     def _update_widgets_font(self, widgets, recursive=False):
         for widget in widgets:
             if recursive:
