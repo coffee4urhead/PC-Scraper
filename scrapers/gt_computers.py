@@ -68,7 +68,7 @@ class GtComputersScraper(PlaywrightBaseScraper):
             print(f"DEBUG: Error extracting product links from GtComputers: {e}")
             return []
 
-    def _parse_product_page(self, page, product_url):
+    def _extract_product_data(self, page, product_url):
         """Extract detailed information using Playwright"""
         print(f"DEBUG: Parsing GtComputers product: {product_url}")
     

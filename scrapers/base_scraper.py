@@ -74,7 +74,7 @@ class PlaywrightBaseScraper(ABC):
             self.playwright = sync_playwright().start()
         
             launch_options = {
-                'headless': False,
+                'headless': self.headless,
                 'timeout': 30000,
                 'args': ['--start-maximized']
             }
@@ -88,9 +88,9 @@ class PlaywrightBaseScraper(ABC):
                 'webkit': lambda: self.playwright.webkit.launch(**launch_options)
             }
 
-            browser_key = pref_browser.lower()
+            browser_key = self.preferred_browser.lower()
             if browser_key not in browser_map:
-                print(f"DEBUG: Browser '{pref_browser}' not found, falling back to chromium")
+                print(f"DEBUG: Browser '{self.preferred_browser}' not found, falling back to chromium")
                 browser_key = 'chrome'
         
             launcher = browser_map[browser_key]
@@ -106,8 +106,8 @@ class PlaywrightBaseScraper(ABC):
                 print("DEBUG: Attempting fallback to Chromium...")
                 if hasattr(self, 'playwright') and self.playwright:
                     self.driver = self.playwright.chromium.launch(
-                        headless=False, 
-                        timeout=30000
+                        headless=self.headless, 
+                        timeout=30000,
                     )
                     print("DEBUG: Fallback to Chromium successful")
                     return True
@@ -148,6 +148,8 @@ class PlaywrightBaseScraper(ABC):
             total_pages = min(max_pages, self.max_pages)
 
             for page_num in range(1, total_pages + 1):
+                time.sleep(self.delay_between_requests * random.uniform(1, self.random_delay_multiplier))
+
                 if self.stop_event.is_set():
                     print("DEBUG: Scraping stopped by stop_event")
                     break
@@ -474,8 +476,56 @@ class PlaywrightBaseScraper(ABC):
     def _extract_product_links(self, page, page_url):
         """Extract product links from search page using Playwright"""
         pass
-
+    
     @abstractmethod
-    def _parse_product_page(self, page, product_url):
-        """Parse product details using Playwright"""
+    def _extract_product_data(self, page, product_url):
+        """Subclasses must implement this - extract raw product data without filtering"""
         pass
+
+    def _parse_product_page(self, page, product_url):
+        """Template method that handles filtering logic - call this from subclasses"""
+        try:
+            product_data = self._extract_product_data(page, product_url)
+            
+            if not product_data:
+                return None
+
+            if self._should_filter_by_price(product_data):
+                return None
+
+            if self._should_filter_by_keywords(product_data):
+                return None
+                
+            return product_data
+            
+        except Exception as e:
+            print(f"DEBUG: Error parsing product page {product_url}: {e}")
+            return None
+
+    def _should_filter_by_price(self, product_data):
+        """Check if product should be filtered based on price settings"""
+        price = product_data.get('price', 0)
+        
+        try:
+            if self.min_price and price < float(self.min_price):
+                return True
+            if self.max_price and price > float(self.max_price):
+                return True
+        except (ValueError, TypeError):
+            print(f"DEBUG: Invalid price filter values - min: {self.min_price}, max: {self.max_price}")
+            
+        return False
+
+    def _should_filter_by_keywords(self, product_data):
+        """Check if product should be filtered based on excluded keywords"""
+        if not self.exclude_keywords:
+            return False
+            
+        excluded_words = [word.strip().lower() for word in self.exclude_keywords.split(',')]
+        title = product_data.get('title', '').lower()
+        description = product_data.get('description', '').lower()
+
+        if any(word in title or word in description for word in excluded_words if word):
+            return True
+            
+        return False

@@ -67,7 +67,7 @@ class HitsBGScraper(PlaywrightBaseScraper):
             print(f"DEBUG: Error extracting product links from HitsBG: {e}")
             return []
 
-    def _parse_product_page(self, page, product_url):
+    def _extract_product_data(self, page, product_url):
         """Extract detailed information using Playwright"""
         print(f"DEBUG: Parsing HitsBG product: {product_url}")
     

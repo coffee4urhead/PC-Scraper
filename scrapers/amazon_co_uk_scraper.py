@@ -35,7 +35,7 @@ class AmazonCoUkScraper(PlaywrightBaseScraper):
             html = page.content()
             if "We’re sorry" in html or "Robot Check" in html:
                 print("DEBUG: Amazon.co.uk detected bot — retrying once...")
-                time.sleep(random.uniform(3, 6))
+                time.sleep(self.delay_between_requests * random.uniform(1, self.random_delay_multiplier))
                 page.reload(wait_until="domcontentloaded")
 
             product_elements = page.query_selector_all('div[data-component-type="s-search-result"]')
@@ -86,7 +86,7 @@ class AmazonCoUkScraper(PlaywrightBaseScraper):
             print(f"DEBUG: Error extracting product links from Amazon.co.uk: {e}")
             return []
 
-    def _parse_product_page(self, page, product_url):
+    def _extract_product_data(self, page, product_url):
         """Extract detailed information using Playwright"""
         print(f"DEBUG: Parsing Amazon.co.uk product: {product_url}")
 

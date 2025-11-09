@@ -60,7 +60,7 @@ class DesktopScraper(PlaywrightBaseScraper):
                 pass
             return []
 
-    def _parse_product_page(self, page, product_url):
+    def _extract_product_data(self, page, product_url):
         """Extract detailed information from a product page using Playwright"""
         print(f"DEBUG: _parse_product_page called for: {product_url}")
         

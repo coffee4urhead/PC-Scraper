@@ -67,7 +67,7 @@ class PcTechBgScraper(PlaywrightBaseScraper):
             print(f"DEBUG: Error extracting product links from PcTech.bg: {e}")
             return []
 
-    def _parse_product_page(self, page, product_url):
+    def _extract_product_data(self, page, product_url):
         """Extract detailed information using Playwright"""
         print(f"DEBUG: Parsing PcTech.bg product: {product_url}")
     
