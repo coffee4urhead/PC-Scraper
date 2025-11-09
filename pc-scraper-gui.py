@@ -3,11 +3,12 @@ from PIL import Image, ImageFilter
 from tkinter import filedialog
 from dotenv import load_dotenv
 import os
-import threading
+import json
 import sys
 import TableMaker as tm
 
 from windows.scraper_options_window import ScraperOptionsWindow
+from settings_manager import SettingsManager
 
 from currency_converter import convert_currency
 
@@ -49,29 +50,48 @@ class GUI(ctk.CTk):
 
         self.title("PC Scraper GUI")
         self.geometry("1200x700")
-        ctk.set_appearance_mode("system")
-        ctk.set_default_color_theme("blue")
+        ctk.set_default_color_theme('blue')
+        self.settings_manager = SettingsManager()
+        
+        self.preferred_currency = self.settings_manager.get('preferred_currency', 'BGN')
+        self.price_format = self.settings_manager.get('price_format', '0.00')
+        self.currency_symbol = "лв"  
+        self.preferred_language = self.settings_manager.get_ui_setting('preferred_language', 'en-US')
+        self.preferred_size = self.settings_manager.get_ui_setting('preferred_size', 15)
+        self.preferred_browser = self.settings_manager.get('preferred_browser', 'Chrome')
+        self.preferred_theme = self.settings_manager.get_ui_setting('preferred_theme', 'System')
+        self.preferred_font = self.settings_manager.get_ui_setting('preferred_font', 'Verdana')
+        self.save_folder = self.settings_manager.get_ui_setting('save_folder', os.path.join(os.path.expanduser("~"), "Desktop"))
+        self.primary_color = self.settings_manager.get_ui_setting('primary_color', '#3B8ED0')
+        self.secondary_color = self.settings_manager.get_ui_setting('secondary_color', '#1F6AA5')
+        self.selected_pc_part = "GPU"
+
+        ctk.set_appearance_mode(self.preferred_theme.lower())
+        
+        try:
+            theme_path = self.settings_manager.get_theme_path()
+            if os.path.exists(theme_path):
+                ctk.set_default_color_theme(theme_path)
+                print("Custom theme applied successfully")
+            else:
+                ctk.set_default_color_theme("blue")
+                print("Using default blue theme")
+        except Exception as e:
+            print(f"Error applying custom theme: {e}")
+            ctk.set_default_color_theme("blue")
 
         self.selected_website = "Desktop.bg"
         self.scraper = DesktopScraper('BGN', self.update_gui)
-
-        self.preferred_currency = "BGN"
-        self.currency_format = "0.00"
-        self.currency_symbol = "лв"
-        self.preferred_language = "en-US"
-        self.preferred_size = 15
-        self.preferred_browser = "Chrome"
-        self.preferred_theme = "Light"
-        self.preferred_font = "Verdana"
-        self.save_folder = os.path.join(os.path.expanduser("~"), "Desktop")
-        self.selected_pc_part = "GPU"
+        self.settings_manager.apply_to_scraper(self.scraper)
 
         self.all_products = []
-        
         self.scraper_options = None
+        
         self.setup_background()
         self.create_panels()
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+        self.after(100, self.apply_custom_colors)
 
     def setup_background(self):
         bg_image_path = resource_path("images/nebula-star.png")
@@ -370,15 +390,18 @@ class GUI(ctk.CTk):
         folder_path = filedialog.askdirectory(title="Select Folder to Save Excel")
         if folder_path:
             self.save_folder = folder_path
+            self.settings_manager.set_ui_setting('save_folder', folder_path)
             if hasattr(self, "folder_tooltip"):
                 self.folder_tooltip.text = self.save_folder
     
     def update_font_size(self, selected_size):
         self.preferred_size = int(selected_size)
+        self.settings_manager.set_ui_setting('preferred_size', self.preferred_size)
         self.update_font_settings()
 
     def update_font_family(self, selected_family):
         self.preferred_font = selected_family
+        self.settings_manager.set_ui_setting('preferred_font', self.preferred_font)
         self.update_font_settings()
 
     def update_font_settings(self):
@@ -394,7 +417,7 @@ class GUI(ctk.CTk):
 
     def get_scraper_windows_options(self):
         if self.scraper_options is None or not self.scraper_options.winfo_exists():
-            self.scraper_options = ScraperOptionsWindow(self, scraper=self.scraper)
+            self.scraper_options = ScraperOptionsWindow(self, scraper=self.scraper, settings_manager=self.settings_manager)
         else:
             self.scraper_options.focus()
     
@@ -435,6 +458,7 @@ class GUI(ctk.CTk):
 
     def update_language(self, selected_langauge):
         self.preferred_language = selected_langauge
+        self.settings_manager.set_ui_setting('preferred_language', self.preferred_language)
         print(f"Updated language to: {self.preferred_language}")
 
     def on_selection(self, selected_value):
@@ -492,9 +516,9 @@ class GUI(ctk.CTk):
             elif self.selected_website == "Amazon.de":
                 self.scraper = AmazonDeScraper('EUR', self.update_gui)
 
+            self.settings_manager.apply_to_scraper(self.scraper)
             print(f"DEBUG: Scraper created successfully for {self.selected_website}")
            
-        
         except Exception as e:
             print(f"DEBUG: Scraper initialization failed: {e}")
     
@@ -1006,29 +1030,41 @@ class GUI(ctk.CTk):
         reset_button.place(relx=0.05, rely=0.92, relwidth=0.9)
     
     def reset_to_defaults(self):
-        self.primary_color = "#3B8ED0"
-        self.secondary_color = "#1F6AA5"
+        self.settings_manager.settings = self.settings_manager.default_settings.copy()
+        self.settings_manager.save_settings()
+
+        self.settings_manager.create_default_theme()
+        ctk.set_default_color_theme(self.settings_manager.get_theme_path())
+        
+        self.preferred_currency = self.settings_manager.get('preferred_currency')
+        self.price_format = self.settings_manager.get('price_format')
+        self.preferred_language = self.settings_manager.get_ui_setting('preferred_language')
+        self.preferred_size = self.settings_manager.get_ui_setting('preferred_size')
+        self.preferred_browser = self.settings_manager.get('preferred_browser')
+        self.preferred_theme = self.settings_manager.get_ui_setting('preferred_theme')
+        self.preferred_font = self.settings_manager.get_ui_setting('preferred_font')
+        self.save_folder = self.settings_manager.get_ui_setting('save_folder')
+        self.primary_color = self.settings_manager.get_ui_setting('primary_color')
+        self.secondary_color = self.settings_manager.get_ui_setting('secondary_color')
     
         self.primary_color_display.configure(fg_color=self.primary_color)
         self.secondary_color_display.configure(fg_color=self.secondary_color)
-    
-        self.preferred_theme = "System"
-        ctk.set_appearance_mode("system")
-    
-        self.preferred_font = "Verdana"
-        self.preferred_size = 15
+        ctk.set_appearance_mode(self.preferred_theme.lower())
     
         if hasattr(self, 'font_family_select'):
-            self.font_family_select.set("Verdana")
+            self.font_family_select.set(self.preferred_font)
         if hasattr(self, 'font_size_select'):
-            self.font_size_select.set("15")
+            self.font_size_select.set(str(self.preferred_size))
     
         self.apply_custom_colors()
         self.update_font_settings()
+        self.call_new_instance_if_needed()
     
     print("Reset all settings to defaults")
+
     def change_theme(self, theme):
         self.preferred_theme = theme
+        self.settings_manager.set_ui_setting('preferred_theme', theme)
         ctk.set_appearance_mode(theme.lower())
         print(f"Theme changed to: {theme}")
 
@@ -1036,6 +1072,7 @@ class GUI(ctk.CTk):
         color = self.ask_color()
         if color:
             self.primary_color = color
+            self.settings_manager.set_ui_setting('primary_color', color)
             self.primary_color_display.configure(fg_color=color)
             self.apply_custom_colors()
 
@@ -1043,6 +1080,7 @@ class GUI(ctk.CTk):
         color = self.ask_color()
         if color:
             self.secondary_color = color
+            self.settings_manager.set_ui_setting('secondary_color', color)
             self.secondary_color_display.configure(fg_color=color)
             self.apply_custom_colors()
 
@@ -1058,12 +1096,16 @@ class GUI(ctk.CTk):
     def apply_preset_colors(self, primary, secondary):
         self.primary_color = primary
         self.secondary_color = secondary
+        self.settings_manager.set_ui_setting('primary_color', primary)
+        self.settings_manager.set_ui_setting('secondary_color', secondary)
         self.primary_color_display.configure(fg_color=primary)
         self.secondary_color_display.configure(fg_color=secondary)
         self.apply_custom_colors()
 
     def apply_custom_colors(self):
         try:
+            self.settings_manager.update_theme()
+            ctk.set_default_color_theme(self.settings_manager.get_theme_path())
             self.update_widget_colors()
             print(f"Applied custom colors: Primary {self.primary_color}, Secondary {self.secondary_color}")
         except Exception as e:
@@ -1091,9 +1133,12 @@ class GUI(ctk.CTk):
 
         for child in widget.winfo_children():
             self._update_widget_colors_recursive(child)
+        
 
     def create_custom_theme(self):
-        theme_path = "custom_theme.json"
+        config_dir = self.settings_manager.get_config_directory()
+        theme_path = os.path.join(config_dir, "custom_theme.json")
+    
         theme_data = {
             "CTk": {
                 "fg_color": ["#DCE4EE", "#1B1B1B"],
@@ -1107,14 +1152,36 @@ class GUI(ctk.CTk):
                 "hover_color": [self.secondary_color, self.secondary_color],
                 "text_color": ["#FFFFFF", "#FFFFFF"],
                 "border_color": ["#3E454A", "#949A9F"]
+            },
+            "CTkFrame": {
+                "corner_radius": 8,
+                "border_width": 1,
+                "fg_color": ["#F0F0F0", "#2B2B2B"],
+                "border_color": [self.primary_color, self.primary_color]
+            },
+            "CTkEntry": {
+                "corner_radius": 6,
+                "border_width": 1,
+                "fg_color": ["#FFFFFF", "#1E1E1E"],
+                "border_color": [self.primary_color, self.primary_color],
+                "text_color": ["#000000", "#FFFFFF"]
+            },
+            "CTkProgressBar": {
+                "corner_radius": 4,
+                "border_width": 0,
+                "fg_color": ["#E0E0E0", "#404040"],
+                "progress_color": [self.secondary_color, self.secondary_color]
             }
         }
-    
-        import json
-        with open(theme_path, 'w') as f:
-            json.dump(theme_data, f, indent=4)
-    
-        return theme_path
+
+        try:
+            with open(theme_path, 'w', encoding='utf-8') as f:
+                json.dump(theme_data, f, indent=4, ensure_ascii=False)
+            print(f"Custom theme saved to {theme_path}")
+            return theme_path
+        except Exception as e:
+            print(f"Error saving custom theme: {e}")
+            return None
     
     def setup_info_tab(self, tab):
         info_label = ctk.CTkLabel(tab, text="Application Information", 
@@ -1170,6 +1237,15 @@ class GUI(ctk.CTk):
 
     def on_browser_change(self, browser):
         self.preferred_browser = browser
+
+    def refresh_theme(self):
+        """Refresh the theme application"""
+        try:
+            theme_path = self.settings_manager.get_theme_path()
+            if os.path.exists(theme_path):
+                print("Theme updated. Restart application to see full changes.")
+        except Exception as e:
+            print(f"Error refreshing theme: {e}")
 
     def on_closing(self):
         print("Closing application...")

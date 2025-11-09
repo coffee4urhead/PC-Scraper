@@ -6,9 +6,6 @@ class JarComputersScraper(PlaywrightBaseScraper):
     def __init__(self, website_currency, update_gui_callback=None):
         super().__init__(website_currency, update_gui_callback)
         self.base_url = "https://www.jarcomputers.com/"
-        self.exclude_keywords = [
-            "Лаптоп", 'Настолен компютър', 'HP Victus', 'Acer Predator Helios'
-        ]
 
     def _get_base_url(self, search_term):
         """Generate clean search URL without restrictive parameters"""
@@ -44,7 +41,9 @@ class JarComputersScraper(PlaywrightBaseScraper):
                 title_element = product.query_selector('span.short_title.fn')
                 title = title_element.inner_text().strip() if title_element else ""
 
-                if any(word.lower() in title.lower() for word in self.exclude_keywords):
+                temp_product_data = {'title': title, 'description': ''}
+                if self._should_filter_by_keywords(temp_product_data):
+                    print(f'Skipped product because it was in the exclusion keywords: {self.exclude_keywords}')
                     continue
 
                 unavailable = product.query_selector('span.avail-old')

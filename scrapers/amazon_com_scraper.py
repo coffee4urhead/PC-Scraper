@@ -6,9 +6,6 @@ class AmazonComScraper(PlaywrightBaseScraper):
     def __init__(self, website_currency, update_gui_callback=None):
         super().__init__(website_currency, update_gui_callback)
         self.base_url = "https://www.amazon.com/"
-        self.exclude_keywords = [
-            "Лаптоп", 'Настолен компютър', 'HP Victus', 'Acer Predator Helios'
-        ]
 
     def _get_base_url(self, search_term):
         """Generate clean search URL without restrictive parameters"""
@@ -53,8 +50,9 @@ class AmazonComScraper(PlaywrightBaseScraper):
 
                 print(f"DEBUG: Product {i+1} - Title: '{title}'")
             
-                if any(word.lower() in title.lower() for word in self.exclude_keywords):
-                    print(f"DEBUG: Product {i+1} - Excluded by keyword filter")
+                temp_product_data = {'title': title, 'description': ''}
+                if self._should_filter_by_keywords(temp_product_data):
+                    print(f'Skipped product because it was in the exclusion keywords: {self.exclude_keywords}')
                     continue
 
                 link_element = product.query_selector('a.a-link-normal')

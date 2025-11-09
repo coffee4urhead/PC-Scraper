@@ -175,7 +175,6 @@ class PlaywrightBaseScraper(ABC):
                     
                     if not product_links:
                         print(f"DEBUG: No products found on page {page_num}")
-                        break
 
                     for i, product_url in enumerate(product_links):
                         if self.stop_event.is_set():
@@ -520,12 +519,40 @@ class PlaywrightBaseScraper(ABC):
         """Check if product should be filtered based on excluded keywords"""
         if not self.exclude_keywords:
             return False
-            
-        excluded_words = [word.strip().lower() for word in self.exclude_keywords.split(',')]
+
+        if isinstance(self.exclude_keywords, str):
+            excluded_words = [word.strip().lower() for word in self.exclude_keywords.split(',') if word.strip()]
+        else:
+            excluded_words = [word.lower() for word in self.exclude_keywords if word]
+    
         title = product_data.get('title', '').lower()
         description = product_data.get('description', '').lower()
-
-        if any(word in title or word in description for word in excluded_words if word):
-            return True
-            
+    
+        print(f"DEBUG: Filter check - Title: '{title}'")
+        print(f"DEBUG: Filter check - Excluded: {excluded_words}")
+    
+        def super_normalize(text):
+            text = re.sub(r'[®™©]', '', text)  
+            text = text.replace('-', ' ')       
+            text = re.sub(r'\s+', ' ', text)   
+            text = text.replace('core', '').replace('intel', '').strip()  
+            return text
+    
+        normalized_title = super_normalize(title)
+        normalized_description = super_normalize(description)
+    
+        print(f"DEBUG: Filter check - Normalized title: '{normalized_title}'")
+    
+        for excluded_word in excluded_words:
+            normalized_excluded = super_normalize(excluded_word)
+        
+            if (normalized_excluded in normalized_title or 
+                normalized_excluded in normalized_description):
+                print(f"DEBUG: FILTERED - Excluded: '{excluded_word}', Title: '{title}'")
+                return True
+        
+            if (excluded_word in title or excluded_word in description):
+                print(f"DEBUG: FILTERED - Excluded: '{excluded_word}', Title: '{title}'")
+                return True
+    
         return False

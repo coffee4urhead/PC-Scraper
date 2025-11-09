@@ -1,0 +1,24 @@
+{
+    "preferred_currency": "BGN",
+    "price_format": "0.00",
+    "preferred_browser": "Chrome",
+    "headless": false,
+    "max_pages": 10,
+    "delay_between_requests": 2.0,
+    "random_delay_multiplier": 1.5,
+    "min_price": "",
+    "max_price": "",
+    "exclude_keywords": "",
+    "output_format": "JSON",
+    "debug_logs": false,
+    "auto_close": true,
+    "ui_settings": {
+        "preferred_font": "Verdana",
+        "preferred_size": 16,
+        "preferred_theme": "System",
+        "preferred_language": "nb-NO",
+        "primary_color": "#FFA500",
+        "secondary_color": "#FF8C00",
+        "save_folder": "/home/demian/Desktop"
+    }
+}

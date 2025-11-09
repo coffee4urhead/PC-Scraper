@@ -62,6 +62,12 @@ class ArdesScraper(PlaywrightBaseScraper):
                             product_links.append(clean_url)
                             title_element = product.query_selector('.prod-title, .title, h3, h4')
                             title = title_element.inner_text().strip() if title_element else "No Title"
+
+                            temp_product_data = {'title': title, 'description': ''}
+                            if self._should_filter_by_keywords(temp_product_data):
+                                print(f'Skipped product because it was in the exclusion keywords: {self.exclude_keywords}')
+                                continue
+                            
                             print(f"DEBUG: Added Ardes product: {title} - {clean_url}")
                         else:
                             print(f"DEBUG: Skipping URL (not a product or duplicate): {clean_url}")
@@ -113,19 +119,16 @@ class ArdesScraper(PlaywrightBaseScraper):
 
             print(f"DEBUG: Extracted Ardes product: {title} - {price}")
 
-            # FIXED: Technical specs parsing
             tech_table = page.query_selector('table.table')
             if tech_table:
                 list_items = tech_table.query_selector_all('tr')
                 for list_item in list_items:
                     try:
-                        # FIXED: Use query_selector on the row, not query_selector_all
                         label_element = list_item.query_selector('th.clmn-head')
                         value_elements = list_item.query_selector_all('td')
                     
                         if label_element and len(value_elements) >= 2:
                             label = label_element.inner_text().strip()
-                            # Get the second td element (index 1) which contains the actual value
                             value_element = value_elements[1]
                             value = value_element.inner_text().strip()
                         

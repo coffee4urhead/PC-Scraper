@@ -42,6 +42,13 @@ class DesktopScraper(PlaywrightBaseScraper):
                 link_element = product.query_selector('a[href]')
                 if link_element:
                     href = link_element.get_attribute('href')
+                    title = link_element.get_attribute('title')
+
+                    temp_product_data = {'title': title, 'description': ''}
+                    if self._should_filter_by_keywords(temp_product_data):
+                        print(f'Skipped product because it was in the exclusion keywords: {self.exclude_keywords}')
+                        continue
+
                     if href:
                         full_url = urljoin(self.base_url, href)
                         clean_url = full_url.split('ref=')[0].split('?')[0]

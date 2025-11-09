@@ -1,9 +1,10 @@
 import customtkinter as ctk
 
 class ScraperOptionsWindow(ctk.CTkToplevel):
-    def __init__(self, master=None, scraper=None):
+    def __init__(self, master=None, scraper=None, settings_manager=None):
         super().__init__(master)
         self.scraper = scraper
+        self.settings_manager = settings_manager
 
         self.geometry("520x800")
         self.title("🧩 Scraper Settings")
@@ -201,7 +202,7 @@ class ScraperOptionsWindow(ctk.CTkToplevel):
         self.format_examples.pack(side="left", padx=5, pady=5)
         
         self.custom_format_frame.pack_forget()
-        
+
         # ====================================================
         # Load current settings after UI is created
         # ====================================================
@@ -210,18 +211,36 @@ class ScraperOptionsWindow(ctk.CTkToplevel):
     def load_current_settings(self):
         """Load current scraper settings into the UI"""
         if not self.scraper:
+            print("DEBUG: No scraper reference available")
             return
 
         print("🔄 Loading current scraper settings...")
-        
+    
+        settings_to_load = {
+            'preferred_currency': 'BGN',
+            'price_format': '0.00',
+            'preferred_browser': 'Chrome', 
+            'headless': False,
+            'max_pages': 10,
+            'delay_between_requests': 2.0,
+            'random_delay_multiplier': 1.5,
+            'min_price': '',
+            'max_price': '',
+            'exclude_keywords': '',
+            'output_format': 'JSON',
+            'debug_logs': False,
+            'auto_close': True,
+        }
+    
         preferred_currency = getattr(self.scraper, 'preferred_currency', 'BGN')
-        price_format = getattr(self.scraper, 'price_format', '0.00')
-
         for option in self.currency_menu._values:
             if preferred_currency in option:
                 self.currency_menu.set(option)
                 break
-        
+        else:
+            self.currency_menu.set("🇧🇬 BGN - Bulgarian Lev")
+    
+        price_format = getattr(self.scraper, 'price_format', '0.00')
         if price_format != "0.00":
             self.formatting_var.set("custom")
             self.custom_format_entry.delete(0, 'end')
@@ -229,19 +248,19 @@ class ScraperOptionsWindow(ctk.CTkToplevel):
             self._toggle_custom_format()  
         else:
             self.formatting_var.set("default")
-            self._toggle_custom_format() 
-
+            self._toggle_custom_format()
+    
         self.browser_menu.set(getattr(self.scraper, 'preferred_browser', 'Chrome'))
         self.headless_switch.select() if getattr(self.scraper, 'headless', False) else self.headless_switch.deselect()
-        
+    
         max_pages = getattr(self.scraper, 'max_pages', 10)
         self.max_pages_slider.set(max_pages)
         self.max_pages_count.configure(text=str(max_pages))
-        
+    
         delay = getattr(self.scraper, 'delay_between_requests', 2.0)
         self.delay_slider.set(delay)
         self.delay_value_label.configure(text=f"{delay:.1f}s")
-        
+    
         random_multiplier = getattr(self.scraper, 'random_delay_multiplier', 1.5)
         self.random_slider.set(random_multiplier)
         self.random_value_label.configure(text=f"{random_multiplier:.2f}×")
@@ -249,13 +268,13 @@ class ScraperOptionsWindow(ctk.CTkToplevel):
         min_price = getattr(self.scraper, 'min_price', '')
         max_price = getattr(self.scraper, 'max_price', '')
         exclude_keywords = getattr(self.scraper, 'exclude_keywords', '')
-        
+    
         self.min_price_entry.delete(0, 'end')
         self.min_price_entry.insert(0, str(min_price))
-        
+
         self.max_price_entry.delete(0, 'end')
         self.max_price_entry.insert(0, str(max_price))
-        
+    
         self.exclude_entry.delete(0, 'end')
         self.exclude_entry.insert(0, str(exclude_keywords))
 
@@ -321,9 +340,11 @@ class ScraperOptionsWindow(ctk.CTkToplevel):
         """Apply settings without closing the window"""
         settings = self.collect_settings()
 
-        if self.scraper:
+        if self.settings_manager:
             for key, value in settings.items():
-                setattr(self.scraper, key, value)
+                self.settings_manager.set(key, value)
+        
+            self.settings_manager.apply_to_scraper(self.scraper)
 
         print("✅ Applied Scraper Settings:")
         for k, v in settings.items():
@@ -333,3 +354,8 @@ class ScraperOptionsWindow(ctk.CTkToplevel):
         """Apply settings and close the window"""
         self.apply_settings()
         self.destroy()
+    
+    def update_scraper_reference(self, new_scraper):
+        """Update the scraper reference and reload settings"""
+        self.scraper = new_scraper
+        self.load_current_settings()
