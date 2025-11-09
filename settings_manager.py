@@ -57,9 +57,15 @@ class SettingsManager:
             return self.default_settings.copy()
     
     def load_or_create_theme(self):
-        """Load existing theme or create default theme"""
         if not os.path.exists(self.theme_file):
             self.create_default_theme()
+        else:
+            with open(self.theme_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            current_primary = self.get_ui_setting("primary_color")
+            if data["CTkButton"]["fg_color"][0] != current_primary:
+                self.create_default_theme()
+
     
     def create_default_theme(self):
         """Create default theme based on current UI settings"""
@@ -114,7 +120,7 @@ class SettingsManager:
         "CTkComboBox": {
             "corner_radius": 6,
             "border_width": 1,
-            "fg_color": ["#FFFFFF", "#1E1E1E"],
+            "fg_color": ["#FFFFFF", "#080707"],
             "button_color": [primary_color, primary_color],
             "button_hover_color": [secondary_color, secondary_color],
             "text_color": ["#000000", "#FFFFFF"],
@@ -148,37 +154,54 @@ class SettingsManager:
             "text_color_disabled": ["#A0A0A0", "#808080"]
         },
         "CTkSwitch": {
-            "fg_color": ["#C0C0C0", "#606060"],
-            "progress_color": [primary_color, primary_color],
-            "button_color": ["#FFFFFF", "#E0E0E0"],
-            "button_hover_color": ["#F0F0F0", "#D0D0D0"],
-            "text_color": ["#000000", "#FFFFFF"],
-            "text_color_disabled": ["#A0A0A0", "#808080"]
+            "fg_color": "#222222",
+            "button_color": "#444444",
+            "button_hover_color": "#555555",
+            "progress_color": "#3B8ED0",
+            "progress_hover_color": "#2563EB",
+            "text_color": "#FFFFFF",
+            "text_color_disabled": "#AAAAAA",
+            "corner_radius": 12,
+            "width": 52,
+            "height": 28,
+            "button_width": 28,
+            "border_width": 2,
+            "button_length": 28
+        },
+        "CTkRadioButton": {
+            "fg_color": ["#1E1E1E", "#121212"],
+            "text_color": ["#FFFFFF", "#FFFFFF"],
+            "border_width": 1,
+            "border_color": ["#3B8ED0", "#3B8ED0"],
+            "corner_radius": 12,
+            "hover_color": ["#2A2A2A", "#1E1E1E"],
+            "indicator_color": ["#3B8ED0", "#3B8ED0"],
+            "indicator_hover_color": ["#2563EB", "#2563EB"],
+            "border_width_unchecked": 2,
+            "border_width_checked": 2,
+            "text_color_disabled": ["#888888", "#AAAAAA"],
         },
         "CTkSlider": {
             "fg_color": ["#C0C0C0", "#606060"],
             "progress_color": [primary_color, primary_color],
             "button_color": ["#FFFFFF", "#E0E0E0"],
             "button_hover_color": ["#F0F0F0", "#D0D0D0"],
-            "border_color": ["#C0C0C0", "#606060"]
+            "border_color": ["#C0C0C0", "#606060"],
+            "corner_radius": 8,
+            'button_corner_radius': 8,
+            'border_width': 1,
+            'button_length' : 28,
         },
         "CTkOptionMenu": {
-            "corner_radius": 6,
-            "border_width": 1,
-            "fg_color": ["#FFFFFF", "#1E1E1E"],
-            "button_color": [primary_color, primary_color],
-            "button_hover_color": [secondary_color, secondary_color],
-            "text_color": ["#000000", "#FFFFFF"],
-            "border_color": [primary_color, primary_color]
-        },
-        "CTkScrollableFrame": {
-            "corner_radius": 8,
-            "border_width": 1,
-            "fg_color": ["#F0F0F0", "#2B2B2B"],
-            "border_color": [primary_color, primary_color],
-            "scrollbar_fg_color": ["#E0E0E0", "#404040"],
-            "scrollbar_button_color": [primary_color, primary_color],
-            "scrollbar_button_hover_color": [secondary_color, secondary_color]
+            "fg_color": "#222222",
+            "button_color": "#444444",
+            "button_hover_color": "#555555",
+            "text_color": "#FFFFFF",
+            "text_color_disabled": "#AAAAAA",
+            "dropdown_fg_color": "#333333",
+            "dropdown_hover_color": "#444444",
+            "dropdown_text_color": "#FFFFFF",
+            "corner_radius": 8
         },
         "CTkTextbox": {
             "corner_radius": 6,
@@ -210,6 +233,20 @@ class SettingsManager:
             "button_color": [primary_color, primary_color],
             "button_hover_color": [secondary_color, secondary_color]
         },
+        "CTkToplevel": {
+            "fg_color": ["#FFFFFF", "#1E1E1E"],
+            "border_color": ["#CCCCCC", "#444444"],
+            "border_width": 1,
+            "corner_radius": 10
+        },
+        "CTkScrollableFrame": {
+            "corner_radius": 6,
+            "border_width": 1,
+            "fg_color": ["#FFFFFF", "#1E1E1E"],
+            "border_color": ["#CCCCCC", "#444444"],
+            "label_fg_color": ["#F0F0F0", "#2A2A2A"]  
+        },
+
     }
         try:
             with open(self.theme_file, 'w', encoding='utf-8') as f:

@@ -31,8 +31,9 @@ class ScraperOptionsWindow(ctk.CTkToplevel):
         ).pack(anchor="w", pady=(20, 5))
 
         ctk.CTkLabel(self.scroll_frame, text="Preferred Browser:").pack(anchor="w", padx=5)
+        self.browser_var = ctk.StringVar(value="Chrome")
         self.browser_menu = ctk.CTkOptionMenu(
-            self.scroll_frame, values=["Chrome", "Firefox", "Edge", "Safari"]
+            self.scroll_frame, variable=self.browser_var, values=["Chrome", "Firefox", "Edge", "Safari"]
         )
         self.browser_menu.pack(padx=5, pady=5, fill="x")
 
@@ -96,8 +97,9 @@ class ScraperOptionsWindow(ctk.CTkToplevel):
         ).pack(anchor="w", pady=(20, 5))
 
         ctk.CTkLabel(self.scroll_frame, text="Save Results As:").pack(anchor="w", padx=5)
+        self.output_format_var = ctk.StringVar(value="JSON")
         self.output_format_menu = ctk.CTkOptionMenu(
-            self.scroll_frame, values=["JSON", "CSV", "Excel"]
+            self.scroll_frame, variable=self.output_format_var, values=["JSON", "CSV", "Excel"]
         )
         self.output_format_menu.pack(padx=5, pady=5, fill="x")
 
@@ -143,8 +145,10 @@ class ScraperOptionsWindow(ctk.CTkToplevel):
         ).pack(anchor="w", pady=(10, 5))
 
         ctk.CTkLabel(self.scroll_frame, text="Select Currency:").pack(anchor="w", padx=5)
+        self.currency_var = ctk.StringVar(value="🇧🇬 BGN - Bulgarian Lev")
         self.currency_menu = ctk.CTkOptionMenu(
             self.scroll_frame, 
+            variable=self.currency_var,
             values=[
                 "🇺🇸 USD - US Dollar", "🇪🇺 EUR - Euro", "🇬🇧 GBP - British Pound", 
                 "🇯🇵 JPY - Japanese Yen", "🇨🇳 CNY - Chinese Yuan", "🇨🇦 CAD - Canadian Dollar",

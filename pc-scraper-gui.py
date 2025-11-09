@@ -1249,16 +1249,21 @@ class GUI(ctk.CTk):
 
     def on_closing(self):
         print("Closing application...")
-        
         if self.scraper:
             print("Stopping scraper...")
             try:
                 self.scraper.stop_scraping()
             except Exception as e:
                 print(f"Error stopping scraper: {e}")
-        
-        print("Destroying window...")
-        self.destroy()
+
+        for widget in self.winfo_children():
+            try:
+                widget.destroy()
+            except Exception as e:
+                print(f"Error destroying {widget}: {e}")
+
+        self.quit() 
+
 
 if __name__ == "__main__":
     app = GUI()
