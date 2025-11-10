@@ -6,7 +6,7 @@ class ScraperOptionsWindow(ctk.CTkToplevel):
         self.scraper = scraper
         self.settings_manager = settings_manager
 
-        self.geometry("520x800")
+        self.geometry("520x820")
         self.title("🧩 Scraper Settings")
         self.resizable(False, False)
         self.configure(fg_color=("#1E1E1E", "#121212"))
@@ -118,24 +118,24 @@ class ScraperOptionsWindow(ctk.CTkToplevel):
         self.apply_button = ctk.CTkButton(
             button_frame,
             text="✅ Apply Settings",
-            height=40,
+            height=80,
             corner_radius=12,
             fg_color="#3B82F6",
             hover_color="#2563EB",
             command=self.apply_settings
         )
-        self.apply_button.pack(side="left", expand=True, fill="x", padx=(0, 5))
+        self.apply_button.pack(side="left", expand=True, fill="x", padx=(0, 10))
 
         self.save_close_button = ctk.CTkButton(
             button_frame,
             text="💾 Save & Close",
-            height=40,
+            height=80,
             corner_radius=12,
             fg_color="#22C55E",
             hover_color="#16A34A",
             command=self.save_and_close
         )
-        self.save_close_button.pack(side="left", expand=True, fill="x", padx=(5, 0))
+        self.save_close_button.pack(side="left", expand=True, fill="x", padx=(10, 0))
 
         # ====================================================
         # Currency Settings Section

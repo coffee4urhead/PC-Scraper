@@ -76,7 +76,7 @@ class SettingsManager:
         "CTk": {
             "fg_color": ["#DCE4EE", "#1B1B1B"],
             "top_fg_color": ["#DCE4EE", "#1B1B1B"],
-            "text_color": ["#000000", "#FFFFFF"]
+            "text_color": ["#FFFFFF", "#000000"]
         },
         "CTkFont": {
             "family": "Microsoft Sans Serif",
@@ -97,7 +97,7 @@ class SettingsManager:
         },
         "CTkFrame": {
             "corner_radius": 8,
-            "border_width": 1,
+            "border_width": 0,
             "fg_color": ["#F0F0F0", "#2B2B2B"],
             "top_fg_color": ["#F0F0F0", "#2B2B2B"],
             "border_color": [primary_color, primary_color]
@@ -120,12 +120,12 @@ class SettingsManager:
         "CTkComboBox": {
             "corner_radius": 6,
             "border_width": 1,
-            "fg_color": ["#FFFFFF", "#080707"],
-            "button_color": [primary_color, primary_color],
+            "fg_color": [primary_color, secondary_color],
+            "button_color": [secondary_color, secondary_color],
             "button_hover_color": [secondary_color, secondary_color],
             "text_color": ["#000000", "#FFFFFF"],
             "text_color_disabled": ["#A0A0A0", "#808080"],  
-            "border_color": [primary_color, primary_color]
+            "border_color": [secondary_color, secondary_color]
         },
         "CTkSegmentedButton": {
             "corner_radius": 6,
@@ -154,29 +154,29 @@ class SettingsManager:
             "text_color_disabled": ["#A0A0A0", "#808080"]
         },
         "CTkSwitch": {
-            "fg_color": "#222222",
-            "button_color": "#444444",
-            "button_hover_color": "#555555",
-            "progress_color": "#3B8ED0",
-            "progress_hover_color": "#2563EB",
-            "text_color": "#FFFFFF",
-            "text_color_disabled": "#AAAAAA",
-            "corner_radius": 12,
-            "width": 52,
-            "height": 28,
-            "button_width": 28,
-            "border_width": 2,
-            "button_length": 28
+            "fg_color": ["#3A3A3A", "#E8E8E8"],              
+            "button_color": ["#F0F0F0", "#FFFFFF"],          
+            "button_hover_color": ["#E5E5E5", "#F2F2F2"],    
+            "progress_color": [primary_color, primary_color], 
+            "progress_hover_color": [secondary_color, secondary_color], 
+            "text_color": ["#FFFFFF", "#FFFFFF"],             
+            "text_color_disabled": ["#777777", "#B0B0B0"],    
+            "corner_radius": 20,                             
+            "width": 200,                                      
+            "height": 200,                                     
+            "button_width": 1000,                               
+            "border_width": 2,                                
+            "button_length": 1000                              
         },
         "CTkRadioButton": {
-            "fg_color": ["#1E1E1E", "#121212"],
-            "text_color": ["#FFFFFF", "#FFFFFF"],
-            "border_width": 1,
-            "border_color": ["#3B8ED0", "#3B8ED0"],
+            "fg_color": [primary_color, secondary_color],
+            "text_color": [secondary_color, secondary_color],
+            "border_width": 2,
+            "border_color": [secondary_color, primary_color],
             "corner_radius": 12,
-            "hover_color": ["#2A2A2A", "#1E1E1E"],
-            "indicator_color": ["#3B8ED0", "#3B8ED0"],
-            "indicator_hover_color": ["#2563EB", "#2563EB"],
+            "hover_color": [secondary_color, secondary_color],
+            "indicator_color": [secondary_color, secondary_color],
+            "indicator_hover_color": [secondary_color, secondary_color],
             "border_width_unchecked": 2,
             "border_width_checked": 2,
             "text_color_disabled": ["#888888", "#AAAAAA"],

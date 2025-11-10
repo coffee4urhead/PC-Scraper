@@ -6,12 +6,9 @@ import os
 import json
 import sys
 import TableMaker as tm
-
 from windows.scraper_options_window import ScraperOptionsWindow
 from settings_manager import SettingsManager
-
 from currency_converter import convert_currency
-
 from scrapers.amazon_com_scraper import AmazonComScraper
 from scrapers.ardes_scraper import ArdesScraper
 from scrapers.jar_computers_scraper import JarComputersScraper
@@ -35,27 +32,28 @@ from scrapers.ezona_bg_scraper import EZonaScraper
 from scrapers.amazon_de_scraper import AmazonDeScraper
 from scrapers.optimal_computers_scraper import OptimalComputersScraper
 
-load_dotenv() 
-
-def resource_path(relative_path):
+load_dotenv()
+def resource_path(relative_path): 
     if hasattr(sys, '_MEIPASS'):
-        base_path = sys._MEIPASS  
-    else:
-        base_path = os.path.abspath(".")
+        base_path = sys._MEIPASS
+    else: base_path = os.path.abspath(".")
+    
     return os.path.join(base_path, relative_path)
 
 class GUI(ctk.CTk):
     def __init__(self):
         super().__init__()
-
         self.title("PC Scraper GUI")
         self.geometry("1200x700")
         ctk.set_default_color_theme('blue')
         self.settings_manager = SettingsManager()
-        
+        theme_path = self.settings_manager.get_theme_path()
+        ctk.set_default_color_theme(theme_path) 
+        ctk.set_appearance_mode(self.settings_manager.get_ui_setting('preferred_theme', 'System').lower())
+
         self.preferred_currency = self.settings_manager.get('preferred_currency', 'BGN')
         self.price_format = self.settings_manager.get('price_format', '0.00')
-        self.currency_symbol = "лв"  
+        self.currency_symbol = "лв"
         self.preferred_language = self.settings_manager.get_ui_setting('preferred_language', 'en-US')
         self.preferred_size = self.settings_manager.get_ui_setting('preferred_size', 15)
         self.preferred_browser = self.settings_manager.get('preferred_browser', 'Chrome')
@@ -65,32 +63,29 @@ class GUI(ctk.CTk):
         self.primary_color = self.settings_manager.get_ui_setting('primary_color', '#3B8ED0')
         self.secondary_color = self.settings_manager.get_ui_setting('secondary_color', '#1F6AA5')
         self.selected_pc_part = "GPU"
-
+        
         ctk.set_appearance_mode(self.preferred_theme.lower())
         
-        try:
-            theme_path = self.settings_manager.get_theme_path()
-            if os.path.exists(theme_path):
+        try: 
+            theme_path = self.settings_manager.get_theme_path() 
+            if os.path.exists(theme_path): 
                 ctk.set_default_color_theme(theme_path)
                 print("Custom theme applied successfully")
-            else:
+            else: 
                 ctk.set_default_color_theme("blue")
                 print("Using default blue theme")
         except Exception as e:
             print(f"Error applying custom theme: {e}")
             ctk.set_default_color_theme("blue")
-
+        
         self.selected_website = "Desktop.bg"
         self.scraper = DesktopScraper('BGN', self.update_gui)
         self.settings_manager.apply_to_scraper(self.scraper)
-
         self.all_products = []
         self.scraper_options = None
-        
         self.setup_background()
         self.create_panels()
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
-
         self.after(100, self.apply_custom_colors)
 
     def setup_background(self):
@@ -123,7 +118,6 @@ class GUI(ctk.CTk):
             height=700,
             fg_color=("#FFFFFF", "#1A1A1A"),
             border_width=2,
-            border_color=("#FFFFFF", "#1A1A1A"),
         )
         self.left_panel.place(x=30, y=35, relwidth=0.6, relheight=0.9)
 
@@ -158,7 +152,6 @@ class GUI(ctk.CTk):
             height=40, 
             corner_radius=20, 
             text_color=("black", "white"),
-            fg_color=("#FFFFFF", "#1A1A1A"),
             placeholder_text='Enter your desired part here ...',
             placeholder_text_color=("#666666", "#888888"),
             font=(self.preferred_font, self.preferred_size)
@@ -174,10 +167,8 @@ class GUI(ctk.CTk):
             height=40,
             fg_color=("#FFFFFF", "#1A1A1A"),
             values=part_options,
-            corner_radius=20,
-            border_color=("#E599F0", "#592461"),  
-            text_color=("black", "white"), 
-            button_color=("#3B8ED0", "#1F6AA5"),  
+            corner_radius=20,  
+            text_color=("black", "white"),  
             dropdown_fg_color=("#FFFFFF", "#1A1A1A"),  
             dropdown_text_color=("black", "white"),
             state='readonly',
@@ -194,10 +185,8 @@ class GUI(ctk.CTk):
             fg_color=("#FFFFFF", "#1A1A1A"),
             values=options,
             corner_radius=20,
-            border_color=("#E599F0", "#592461"),  
-            text_color=("black", "white"), 
-            button_color=("#3B8ED0", "#1F6AA5"),  
-            dropdown_fg_color=("#FFFFFF", "#1A1A1A"),  
+            border_color=[self.primary_color, self.secondary_color],
+            text_color=("black", "white"),  
             dropdown_text_color=("black", "white"),
             state='readonly',
             command=self.on_selection_instantiate,
@@ -233,8 +222,6 @@ class GUI(ctk.CTk):
             width=1000,
             height=40,
             corner_radius=20,
-            fg_color=("#FFFFFF", "#2C2929"),
-            progress_color=("#EBAEF5", "#E599F0")
         )
         self.progress_bar.place(relx=0.05, rely=0.2, relwidth=0.9)
 
@@ -261,9 +248,6 @@ class GUI(ctk.CTk):
             height=40,
             corner_radius=20,
             font=(self.preferred_font, 30),
-            fg_color=("#DFB6E5", "#E599F0"),
-            border_color=("#E599F0", "#592461"),
-            hover_color=("#C5A0CA", "#DE8DEB"),
             image=search_ctk_image,
             text='',
             command=self._start_scraping
@@ -387,12 +371,13 @@ class GUI(ctk.CTk):
             self.scraper.start_scraping(search_term)
 
     def ask_save_dir(self): 
-        folder_path = filedialog.askdirectory(title="Select Folder to Save Excel")
+        folder_path = filedialog.askdirectory(title="Select Folder to Save Excel", initialdir=self.save_folder)
         if folder_path:
             self.save_folder = folder_path
             self.settings_manager.set_ui_setting('save_folder', folder_path)
             if hasattr(self, "folder_tooltip"):
                 self.folder_tooltip.text = self.save_folder
+                self.settings_manager.set_ui_setting('save_folder', folder_path)
     
     def update_font_size(self, selected_size):
         self.preferred_size = int(selected_size)
@@ -634,7 +619,6 @@ class GUI(ctk.CTk):
             height=700, 
             fg_color="#1A1A1A",
             border_width=2,
-            border_color=("#BA61C3", "#CF55DA"),
             corner_radius=12,
         )
         font_frame.place(x=790, y=130, relwidth=0.3, relheight=0.23)
@@ -688,18 +672,17 @@ class GUI(ctk.CTk):
 
         self.font_family_select = ctk.CTkComboBox(
             font_frame,
-            width=170,  
+            width=170,
             height=40,
             fg_color=("#FFFFFF", "#1A1A1A"),
             values=font_family_options,
             corner_radius=20,
-            border_color=("#E599F0", "#592461"),  
-            text_color=("black", "white"), 
-            button_color=("#3B8ED0", "#1F6AA5"),  
-            dropdown_fg_color=("#FFFFFF", "#1A1A1A"),  
+            border_color=[self.primary_color, self.secondary_color],
+            text_color=("black", "white"),
+            button_color=("#3B8ED0", "#1F6AA5"),
+            dropdown_fg_color=("#FFFFFF", "#1A1A1A"),
             dropdown_text_color=("black", "white"),
-            state='readonly',
-            command=self.update_font_family,
+            state='readonly', command=self.update_font_family,
             font=(self.preferred_font, self.preferred_size)
         )
         self.font_family_select.set("Verdana")
@@ -765,7 +748,7 @@ class GUI(ctk.CTk):
             fg_color=("#FFFFFF", "#1A1A1A"),
             values=languages,
             corner_radius=20,
-            border_color=("#E599F0", "#592461"),  
+            border_color=[self.primary_color, self.secondary_color],
             text_color=("black", "white"), 
             button_color=("#3B8ED0", "#1F6AA5"),  
             dropdown_fg_color=("#FFFFFF", "#1A1A1A"),  
@@ -793,8 +776,8 @@ class GUI(ctk.CTk):
             height=40,
             fg_color=("#FFFFFF", "#1A1A1A"),
             values=font_size_options,
-            corner_radius=20,
-            border_color=("#E599F0", "#592461"),  
+            corner_radius=20, 
+            border_color=[self.primary_color, self.secondary_color],
             text_color=("black", "white"), 
             button_color=("#3B8ED0", "#1F6AA5"),  
             dropdown_fg_color=("#FFFFFF", "#1A1A1A"),  
@@ -1126,7 +1109,16 @@ class GUI(ctk.CTk):
             widget.configure(fg_color=self.primary_color, progress_color=self.secondary_color)
 
         if isinstance(widget, ctk.CTkComboBox):
-            widget.configure(button_color=self.primary_color, button_hover_color=self.secondary_color)
+            if isinstance(widget, ctk.CTkComboBox):
+                widget.configure(
+                button_color=self.primary_color,
+                button_hover_color=self.secondary_color,
+                fg_color=("#FFFFFF", "#1A1A1A"),
+                text_color=("black", "white"),
+                dropdown_fg_color=("#FFFFFF", "#1A1A1A"),
+                dropdown_hover_color=(self.primary_color, self.secondary_color),
+                dropdown_text_color=("black", "white")
+            )
 
         if isinstance(widget, ctk.CTkFrame):
             widget.configure(border_color=self.primary_color)
@@ -1171,7 +1163,16 @@ class GUI(ctk.CTk):
                 "border_width": 0,
                 "fg_color": ["#E0E0E0", "#404040"],
                 "progress_color": [self.secondary_color, self.secondary_color]
-            }
+            },
+            "CTkComboBox": {
+                "button_color": self.primary_color,
+                "button_hover_color": self.secondary_color,
+                "fg_color": ("#FFFFFF", "#1A1A1A"),
+                "text_color": ("black", "white"),
+                "dropdown_fg_color": ("#FFFFFF", "#1A1A1A"),
+                "dropdown_hover_color": (self.primary_color, self.secondary_color),
+                "dropdown_text_color": ("black", "white")
+            },
         }
 
         try:
