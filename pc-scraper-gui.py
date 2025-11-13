@@ -4,6 +4,8 @@ from tkinter import filedialog
 from dotenv import load_dotenv
 import os
 import json
+import threading
+
 import sys
 import TableMaker as tm
 from windows.scraper_options_window import ScraperOptionsWindow
@@ -64,6 +66,75 @@ class GUI(ctk.CTk):
         self.secondary_color = self.settings_manager.get_ui_setting('secondary_color', '#1F6AA5')
         self.selected_pc_part = "GPU"
         
+        self.currency_mapping = {
+            "🇺🇸 USD - US Dollar": "USD",
+            "🇪🇺 EUR - Euro": "EUR", 
+            "🇬🇧 GBP - British Pound": "GBP",
+            "🇯🇵 JPY - Japanese Yen": "JPY",
+            "🇨🇳 CNY - Chinese Yuan": "CNY",
+            "🇨🇦 CAD - Canadian Dollar": "CAD",
+            "🇦🇺 AUD - Australian Dollar": "AUD",
+            "🇨🇭 CHF - Swiss Franc": "CHF",
+            "🇧🇬 BGN - Bulgarian Lev": "BGN",
+            "🇧🇷 BRL - Brazilian Real": "BRL",
+            "🇨🇿 CZK - Czech Koruna": "CZK",
+            "🇩🇰 DKK - Danish Krone": "DKK",
+            "🇭🇰 HKD - Hong Kong Dollar": "HKD",
+            "🇭🇺 HUF - Hungarian Forint": "HUF",
+            "🇮🇳 INR - Indian Rupee": "INR",
+            "🇮🇩 IDR - Indonesian Rupiah": "IDR",
+            "🇮🇱 ILS - Israeli Shekel": "ILS",
+            "🇰🇷 KRW - South Korean Won": "KRW",
+            "🇲🇾 MYR - Malaysian Ringgit": "MYR",
+            "🇲🇽 MXN - Mexican Peso": "MXN",
+            "🇳🇿 NZD - New Zealand Dollar": "NZD",
+            "🇳🇴 NOK - Norwegian Krone": "NOK",
+            "🇵🇭 PHP - Philippine Peso": "PHP",
+            "🇵🇱 PLN - Polish Zloty": "PLN",
+            "🇷🇴 RON - Romanian Leu": "RON",
+            "🇷🇺 RUB - Russian Ruble": "RUB",
+            "🇸🇬 SGD - Singapore Dollar": "SGD",
+            "🇿🇦 ZAR - South African Rand": "ZAR",
+            "🇸🇪 SEK - Swedish Krona": "SEK",
+            "🇹🇭 THB - Thai Baht": "THB",
+            "🇹🇷 TRY - Turkish Lira": "TRY",
+            "🇦🇪 AED - Emirati Dirham": "AED"
+        }
+
+        self.currency_symbols = {
+            "USD": "$",           
+            "EUR": "€",           
+            "GBP": "£",           
+            "JPY": "¥",          
+            "CNY": "¥",         
+            "CAD": "C$",          
+            "AUD": "A$",          
+            "CHF": "CHF",         
+            "BGN": "лв",          
+            "BRL": "R$",          
+            "CZK": "Kč",          
+            "DKK": "kr",          
+            "HKD": "HK$",         
+            "HUF": "Ft",          
+            "INR": "₹",           
+            "IDR": "Rp",         
+            "ILS": "₪",           
+            "KRW": "₩",           
+            "MYR": "RM",          
+            "MXN": "Mex$",        
+            "NZD": "NZ$",         
+            "NOK": "kr",          
+            "PHP": "₱",           
+            "PLN": "zł",          
+            "RON": "lei",         
+            "RUB": "₽",           
+            "SGD": "S$",          
+            "ZAR": "R",          
+            "SEK": "kr",          
+            "THB": "฿",           
+            "TRY": "₺",           
+            "AED": "د.إ",         
+        }
         ctk.set_appearance_mode(self.preferred_theme.lower())
         
         try: 
@@ -341,7 +412,7 @@ class GUI(ctk.CTk):
         self.right_console = ctk.CTkTextbox(
             self.right_panel,
             width=350,
-            height=550,
+            height=500,
             fg_color=("#FFFFFF", "#000000"),
             text_color='green',
             wrap='word',
@@ -365,7 +436,10 @@ class GUI(ctk.CTk):
         search_term = self.left_entry.get().strip()
         if search_term:
             self.right_console.delete(1.0, 'end')
-            self.left_scrape_button.configure(state='disabled')
+            self.reconfigure_back_property(self.left_scrape_button, True)
+            self.reconfigure_back_property(self.left_entry, True)
+            self.reconfigure_back_property(self.left_website_select, True)
+            self.reconfigure_back_property(self.left_part_select, True)
             self.progress_bar['value'] = 0
             self.status_label.configure(text="Starting scrape...")
             self.scraper.start_scraping(search_term)
@@ -514,6 +588,7 @@ class GUI(ctk.CTk):
         self.after(0, self._process_scraper_update, data)
 
     def _process_scraper_update(self, data):
+        """Tkinter callback - must be synchronous (remove async)"""
         try:
             if data['type'] == 'progress':
                 self.progress_bar.set(data['value'] / 100)
@@ -551,38 +626,79 @@ class GUI(ctk.CTk):
                 self.progress_bar.set(0)
 
             elif data['type'] == 'complete':
-                self.status_label.configure(text="Scraping completed successfully!", text_color="green")
+                self.status_label.configure(text="Processing results...", text_color="orange")
+                self.reconfigure_back_property(self.left_scrape_button, True)
+                self.reconfigure_back_property(self.left_entry, True)
+                self.reconfigure_back_property(self.left_website_select, True)
+                self.reconfigure_back_property(self.left_part_select, True)
 
-                for product in self.all_products:
-                    if 'price' in product and product['price'] != "N/A":
-                        try:
-                            price_str = str(product['price']).split('/')[0].strip()
-
-                            for symbol in ["лв", "$", "€", "£", "¥", "USD", "EUR", "BGN", "JPY"]:
-                                price_str = price_str.replace(symbol, "")
-
-                            price_str = price_str.replace(",", "").replace(" ", "")
-                            original_price = float(price_str)
-
-                            converted_price = convert_currency(
-                                original_price,
-                                self.scraper.website_currency, 
-                                self.preferred_currency
-                            )
-
-                            print(f"Converted {original_price} {self.scraper.website_currency} to {converted_price} {self.preferred_currency}")
-                            formatted_price = f"{self.currency_symbol}{converted_price:.2f}"
-                            product['price'] = formatted_price
-                        except Exception as e:
-                            print(f"Currency conversion error for {product['title']}: {str(e)}")
-                            continue
-
-                tm.TableMaker(data=self.all_products, website_scraped=self.selected_website, output_folder=self.save_folder, pc_part_selected=self.selected_pc_part, currency_symbol=self.currency_symbol)
-                self.progress_bar.set(1.0)
+                threading.Thread(
+                    target=self._convert_prices_and_create_excel,
+                daemon=True
+                ).start()
 
         except Exception as e:
             self.right_console.insert('end', f"GUI Update Error: {str(e)}\n\n")
             self.status_label.configure(text=f"Update Error: {str(e)}", text_color="red")
+
+    def _convert_prices_and_create_excel(self):
+        """Run currency conversion and Excel creation in background thread"""
+        try:
+            for product in self.all_products:
+                if 'price' in product and product['price'] != "N/A":
+                    try:
+                        price_str = str(product['price']).split('/')[0].strip()
+
+                        for symbol in ["лв", "$", "€", "£", "¥", "USD", "EUR", "BGN", "JPY"]:
+                            price_str = price_str.replace(symbol, "")
+
+                        price_str = price_str.replace(",", "").replace(" ", "")
+                        original_price = float(price_str)
+
+                        converted_price = convert_currency(
+                            original_price,
+                            self.scraper.website_currency, 
+                            getattr(self.scraper, 'preferred_currency', 'BGN')
+                        )
+
+                        currency_code = getattr(self.scraper, 'preferred_currency', 'BGN')
+                        symbol = self.currency_symbols.get(currency_code, "лв") 
+
+                        if converted_price is None:
+                            formatted_price = f"лв{original_price:.2f}"  
+                            print(f"⚠️ Conversion failed for {product['title']}, using original price")
+                        else:
+                            formatted_price = f"{symbol}{converted_price:.2f}"
+                    
+                        product['price'] = formatted_price
+                    except Exception as e:
+                        print(f"Currency conversion error for {product['title']}: {str(e)}")
+                        continue
+
+            currency_code = getattr(self.scraper, 'preferred_currency', 'BGN')
+            symbol = self.currency_symbols.get(currency_code, "лв")
+        
+            tm.TableMaker(
+                data=self.all_products, 
+                website_scraped=self.selected_website, 
+                output_folder=self.save_folder, 
+                pc_part_selected=self.selected_pc_part, 
+                currency_symbol=symbol
+            )
+        
+            self.after(0, self._on_processing_complete)
+
+        except Exception as e:
+            print(f"Background processing error: {e}")
+            self.after(0, lambda: self.status_label.configure(
+                text=f"Processing error: {str(e)}", 
+                text_color="red"
+                ))
+
+    def _on_processing_complete(self):
+        """Called on main thread when background processing is done"""
+        self.status_label.configure(text="Scraping completed successfully!", text_color="green")
+        self.progress_bar.set(1.0)
 
     def setup_settings_tab(self, tab):
         self.look_and_feel_panel = ctk.CTkFrame(
@@ -1247,6 +1363,13 @@ class GUI(ctk.CTk):
                 print("Theme updated. Restart application to see full changes.")
         except Exception as e:
             print(f"Error refreshing theme: {e}")
+
+    def reconfigure_back_property(self, widget, enabled: bool = True):
+        if hasattr(widget, 'configure'):
+            state_value = "normal" if enabled else "disabled"
+            widget.configure(state=state_value)
+        else:
+            print(f"DEBUG: Widget {widget} doesn't have configure method")
 
     def on_closing(self):
         print("Closing application...")

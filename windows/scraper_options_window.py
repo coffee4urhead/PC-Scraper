@@ -11,6 +11,41 @@ class ScraperOptionsWindow(ctk.CTkToplevel):
         self.resizable(False, False)
         self.configure(fg_color=("#1E1E1E", "#121212"))
 
+        self.currency_mapping = {
+            "🇺🇸 USD - US Dollar": "USD",
+            "🇪🇺 EUR - Euro": "EUR", 
+            "🇬🇧 GBP - British Pound": "GBP",
+            "🇯🇵 JPY - Japanese Yen": "JPY",
+            "🇨🇳 CNY - Chinese Yuan": "CNY",
+            "🇨🇦 CAD - Canadian Dollar": "CAD",
+            "🇦🇺 AUD - Australian Dollar": "AUD",
+            "🇨🇭 CHF - Swiss Franc": "CHF",
+            "🇧🇬 BGN - Bulgarian Lev": "BGN",
+            "🇧🇷 BRL - Brazilian Real": "BRL",
+            "🇨🇿 CZK - Czech Koruna": "CZK",
+            "🇩🇰 DKK - Danish Krone": "DKK",
+            "🇭🇰 HKD - Hong Kong Dollar": "HKD",
+            "🇭🇺 HUF - Hungarian Forint": "HUF",
+            "🇮🇳 INR - Indian Rupee": "INR",
+            "🇮🇩 IDR - Indonesian Rupiah": "IDR",
+            "🇮🇱 ILS - Israeli Shekel": "ILS",
+            "🇰🇷 KRW - South Korean Won": "KRW",
+            "🇲🇾 MYR - Malaysian Ringgit": "MYR",
+            "🇲🇽 MXN - Mexican Peso": "MXN",
+            "🇳🇿 NZD - New Zealand Dollar": "NZD",
+            "🇳🇴 NOK - Norwegian Krone": "NOK",
+            "🇵🇭 PHP - Philippine Peso": "PHP",
+            "🇵🇱 PLN - Polish Zloty": "PLN",
+            "🇷🇴 RON - Romanian Leu": "RON",
+            "🇷🇺 RUB - Russian Ruble": "RUB",
+            "🇸🇬 SGD - Singapore Dollar": "SGD",
+            "🇿🇦 ZAR - South African Rand": "ZAR",
+            "🇸🇪 SEK - Swedish Krona": "SEK",
+            "🇹🇭 THB - Thai Baht": "THB",
+            "🇹🇷 TRY - Turkish Lira": "TRY",
+            "🇦🇪 AED - Emirati Dirham": "AED"
+        }
+
         self.lift()
         self.focus_force()
         self.grab_set()
@@ -237,12 +272,14 @@ class ScraperOptionsWindow(ctk.CTkToplevel):
         }
     
         preferred_currency = getattr(self.scraper, 'preferred_currency', 'BGN')
-        for option in self.currency_menu._values:
-            if preferred_currency in option:
-                self.currency_menu.set(option)
+    
+        currency_display_text = "🇧🇬 BGN - Bulgarian Lev" 
+        for display_text, code in self.currency_mapping.items():
+            if code == preferred_currency:
+                currency_display_text = display_text
                 break
-        else:
-            self.currency_menu.set("🇧🇬 BGN - Bulgarian Lev")
+    
+        self.currency_menu.set(currency_display_text)
     
         price_format = getattr(self.scraper, 'price_format', '0.00')
         if price_format != "0.00":
@@ -309,13 +346,7 @@ class ScraperOptionsWindow(ctk.CTkToplevel):
     # ====================================================
     def collect_settings(self):
         selected_currency_text = self.currency_menu.get()
-        currency_code = "BGN" 
-        for option in self.currency_menu._values:
-            if option == selected_currency_text:
-                parts = option.split(" - ")
-                if len(parts) > 1:
-                    currency_code = parts[1].strip()
-                break
+        currency_code = self.currency_mapping.get(selected_currency_text, "BGN")
         
         price_format = "0.00"  
         if self.formatting_var.get() == "custom" and self.custom_format_entry.get().strip():
