@@ -9,7 +9,7 @@ import traceback
 
 
 import sys
-from FileCreators.TableMaker import table_maker as tm
+from FileCreators.TableMaker import TableMaker as tm
 from FileCreators import JSON_creator as jsc
 from FileCreators import CSV_creator as cs
 
