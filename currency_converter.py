@@ -1,54 +1,75 @@
-from time import sleep, time
-from dotenv import load_dotenv
+import yfinance as yf
 import requests
-import os
+from datetime import datetime, timedelta
 
-load_dotenv() 
-API_KEY = os.getenv("UNI_RATE_API_KEY")
-API_BASE_URL = os.getenv("BASE_URL")
+class RealCurrencyConverter:
+    def __init__(self):
+        self.rates_cache = {}
+        self.cache_time = None
+        self.cache_duration = 3600  
+        
+    def get_real_time_rate(self, from_currency, to_currency):
+        """Get real-time rate with fallback sources"""
+        if from_currency == to_currency:
+            return 1.0
+        
+        cache_key = f"{from_currency}_{to_currency}"
 
-last_api_call = 0
-MIN_API_DELAY = 2.0  
+        if (cache_key in self.rates_cache and 
+            self.cache_time and 
+            (datetime.now() - self.cache_time).seconds < self.cache_duration):
+            return self.rates_cache[cache_key]
 
-def convert_currency(amount, from_currency, to_currency):
-    global last_api_call
-
-    if from_currency == to_currency:
-        print(f"Skipping conversion: same currency {from_currency}")
-        return amount
+        rate = self._get_yahoo_rate(from_currency, to_currency)
+        if rate:
+            self.rates_cache[cache_key] = rate
+            self.cache_time = datetime.now()
+            return rate
+        
+        rate = self._get_exchangerate_api(from_currency, to_currency)
+        if rate:
+            self.rates_cache[cache_key] = rate
+            self.cache_time = datetime.now()
+            return rate
+        
+        rate = self._get_fallback_rate(from_currency, to_currency)
+        if rate:
+            print(f"⚠️ Using fallback rate (may be outdated)")
+            return rate
+        
+        return None
     
-    try:
-        current_time = time()
-        time_since_last_call = current_time - last_api_call
-        if time_since_last_call < MIN_API_DELAY:
-            sleep_time = MIN_API_DELAY - time_since_last_call
-            print(f"Rate limiting: waiting {sleep_time:.2f}s")
-            sleep(sleep_time)  
-        
-        url = f"{API_BASE_URL}/convert"
-        params = {
-            'api_key': API_KEY,
-            "from": from_currency,
-            "to": to_currency,
-            "amount": amount
-        }
-        
-        print(f"🔧 API CALL: {from_currency} -> {to_currency}, amount: {amount}")
-        
-        response = requests.get(url, params=params, timeout=10)
-        response.raise_for_status()
-        data = response.json()  
-        
-        last_api_call = time()
-        
-        result = data.get("result")
-        if result is None:
-            print(f"❌ API returned no result")
-            return None
+    def _get_yahoo_rate(self, from_currency, to_currency):
+        """Get rate from Yahoo Finance"""
+        try:
+            ticker = f"{from_currency}{to_currency}=X"
+            data = yf.download(ticker, period="1d", progress=False)
             
-        print(f"✅ Converted {amount} {from_currency} to {result} {to_currency}")
-        return result
-        
-    except Exception as e:
-        print(f"❌ Conversion error: {e}")
+            if not data.empty:
+                rate = data['Close'].iloc[-1]
+                print(f"📊 Yahoo Finance {from_currency}/{to_currency}: {rate:.4f}")
+                return rate
+        except Exception as e:
+            print(f"Yahoo Finance failed: {e}")
+        return None
+    
+    def _get_exchangerate_api(self, from_currency, to_currency):
+        """Get rate from ExchangeRate-API"""
+        try:
+            url = f"https://api.exchangerate-api.com/v4/latest/{from_currency}"
+            response = requests.get(url, timeout=10)
+            data = response.json()
+            rate = data['rates'][to_currency]
+            print(f"📊 ExchangeRate-API {from_currency}/{to_currency}: {rate:.4f}")
+            return rate
+        except:
+            return None
+
+    def convert_currency(self, amount, from_currency, to_currency):
+        """Convert currency with real-time rates"""
+        rate = self.get_real_time_rate(from_currency, to_currency)
+        if rate:
+            converted = amount * rate
+            print(f"✅ Converted {amount} {from_currency} to {converted:.2f} {to_currency}")
+            return converted
         return None

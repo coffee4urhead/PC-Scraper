@@ -9,7 +9,7 @@
     "min_price": "123",
     "max_price": "1234",
     "exclude_keywords": "niggersd",
-    "output_format": "JSON",
+    "output_format": "CSV",
     "debug_logs": 0,
     "auto_close": 1,
     "ui_settings": {
@@ -17,8 +17,8 @@
         "preferred_size": 17,
         "preferred_theme": "System",
         "preferred_language": "en-US",
-        "primary_color": "#FFA500",
-        "secondary_color": "#FF8C00",
+        "primary_color": "#FF6B6B",
+        "secondary_color": "#FF4757",
         "save_folder": "/home/demian/Desktop/ScrapeProducts"
     }
 }

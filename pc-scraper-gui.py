@@ -5,12 +5,17 @@ from dotenv import load_dotenv
 import os
 import json
 import threading
+import traceback
+
 
 import sys
-import TableMaker as tm
+from FileCreators.TableMaker import table_maker as tm
+from FileCreators import JSON_creator as jsc
+from FileCreators import CSV_creator as cs
+
 from windows.scraper_options_window import ScraperOptionsWindow
 from settings_manager import SettingsManager
-from currency_converter import convert_currency
+from currency_converter import RealCurrencyConverter
 from scrapers.amazon_com_scraper import AmazonComScraper
 from scrapers.ardes_scraper import ArdesScraper
 from scrapers.jar_computers_scraper import JarComputersScraper
@@ -48,6 +53,7 @@ class GUI(ctk.CTk):
         self.title("PC Scraper GUI")
         self.geometry("1200x700")
         ctk.set_default_color_theme('blue')
+        self.converter = RealCurrencyConverter()
         self.settings_manager = SettingsManager()
         theme_path = self.settings_manager.get_theme_path()
         ctk.set_default_color_theme(theme_path) 
@@ -442,6 +448,7 @@ class GUI(ctk.CTk):
             self.reconfigure_back_property(self.left_part_select, True)
             self.progress_bar['value'] = 0
             self.status_label.configure(text="Starting scrape...")
+            self.all_products.clear()
             self.scraper.start_scraping(search_term)
 
     def ask_save_dir(self): 
@@ -655,7 +662,7 @@ class GUI(ctk.CTk):
                         price_str = price_str.replace(",", "").replace(" ", "")
                         original_price = float(price_str)
 
-                        converted_price = convert_currency(
+                        converted_price = self.converter.convert_currency(
                             original_price,
                             self.scraper.website_currency, 
                             getattr(self.scraper, 'preferred_currency', 'BGN')
@@ -677,23 +684,48 @@ class GUI(ctk.CTk):
 
             currency_code = getattr(self.scraper, 'preferred_currency', 'BGN')
             symbol = self.currency_symbols.get(currency_code, "лв")
-        
-            tm.TableMaker(
-                data=self.all_products, 
-                website_scraped=self.selected_website, 
-                output_folder=self.save_folder, 
-                pc_part_selected=self.selected_pc_part, 
-                currency_symbol=symbol
-            )
+            output_format = self.scraper_options.output_format_menu.get()
+            print(f"DEBUG: Output format preference: {output_format}")
+            
+            if output_format == 'JSON':
+                print("JSON preferred!")
+                jsc.JSONCreator(
+                    data=self.all_products,
+                    website_scraped=self.selected_website,
+                    output_folder=self.save_folder,
+                    pc_part_selected=self.selected_pc_part,
+                    currency_symbol=symbol,
+                    history_save_preferred=True,
+                )
+
+            elif output_format == 'CSV':
+                cs.CSVCreator(
+                    data=self.all_products, 
+                    website_scraped=self.selected_website, 
+                    output_folder=self.save_folder, 
+                    pc_part_selected=self.selected_pc_part, 
+                    currency_symbol=symbol,
+                    history_save_preferred=True
+                )
+            elif output_format == 'Excel':
+                tm.TableMaker(
+                    data=self.all_products, 
+                    website_scraped=self.selected_website, 
+                    output_folder=self.save_folder, 
+                    pc_part_selected=self.selected_pc_part, 
+                    currency_symbol=symbol
+                )
         
             self.after(0, self._on_processing_complete)
 
         except Exception as e:
             print(f"Background processing error: {e}")
+            traceback.print_exc()
+            error_message = str(e)
             self.after(0, lambda: self.status_label.configure(
-                text=f"Processing error: {str(e)}", 
+                text=f"Processing error: {error_message}", 
                 text_color="red"
-                ))
+            ))
 
     def _on_processing_complete(self):
         """Called on main thread when background processing is done"""
