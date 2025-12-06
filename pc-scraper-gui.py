@@ -13,6 +13,7 @@ from FileCreators.TableMaker import TableMaker as tm
 from FileCreators import JSON_creator as jsc
 from FileCreators import CSV_creator as cs
 
+from graph_comparer import GraphComparer
 from historical_comparer import HistoricalComparison
 
 from windows.scraper_options_window import ScraperOptionsWindow
@@ -692,8 +693,7 @@ class GUI(ctk.CTk):
 
             currency_code = getattr(self.scraper, 'preferred_currency', 'BGN')
             symbol = self.currency_symbols.get(currency_code, "лв")
-            self.get_scraper_windows_options()
-            output_format = self.scraper_options.output_format_menu.get()
+            output_format = self.settings_manager.get("output_format", 'Excel')
             print(f"DEBUG: Output format preference: {output_format}")
             
             if output_format == 'JSON':
@@ -1482,19 +1482,18 @@ class GUI(ctk.CTk):
         error_msg = "" 
     
         try:
-            self.get_scraper_windows_options()
-            output_format = self.scraper_options.output_format_menu.get()
+            output_format = self.settings_manager.get("output_format", 'CSV')
             part_to_compare = self.part_to_compare_historically
             first_website = self.first_website_for_comparison
             second_website = self.second_website_for_comparison
         
             comparison = HistoricalComparison(
-                output_format, 
-                part_to_compare, 
-                first_website, 
+                output_format,
+                part_to_compare,
+                first_website,
                 second_website
             )
-        
+
             result = comparison.get_summary()
         
             if result['status'] == 'ready':
@@ -1502,15 +1501,20 @@ class GUI(ctk.CTk):
                 second_count = len(comparison.second_website_files)
             
                 message = (f"✅ Comparison Ready!\n"
-                      f"📁 {first_website}: {first_count} files\n"
-                      f"📁 {second_website}: {second_count} files\n"
-                      f"📊 Ready to compare {part_to_compare} prices")
+                    f"📁 {first_website}: {first_count} files\n"
+                    f"📁 {second_website}: {second_count} files\n"
+                    f"📊 Ready to compare {part_to_compare} prices")
             
                 self._update_comparison_status(message, "green")
                 self.current_comparison = comparison
             
                 if hasattr(self, 'visualize_button'):
                     self.visualize_button.configure(state="normal")
+            
+                if hasattr(self, 'visualization_frame'):
+                    GraphComparer(result['data'], output_format, self.visualization_frame)
+                else:
+                    GraphComparer(result['data'], output_format)
             
                 print(f"Success: {first_count} vs {second_count} files")
             
