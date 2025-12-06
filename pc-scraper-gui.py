@@ -13,6 +13,8 @@ from FileCreators.TableMaker import TableMaker as tm
 from FileCreators import JSON_creator as jsc
 from FileCreators import CSV_creator as cs
 
+from historical_comparer import HistoricalComparison
+
 from windows.scraper_options_window import ScraperOptionsWindow
 from settings_manager import SettingsManager
 from currency_converter import RealCurrencyConverter
@@ -71,7 +73,10 @@ class GUI(ctk.CTk):
         self.primary_color = self.settings_manager.get_ui_setting('primary_color', '#3B8ED0')
         self.secondary_color = self.settings_manager.get_ui_setting('secondary_color', '#1F6AA5')
         self.selected_pc_part = "GPU"
-        
+        self.first_website_for_comparison = self.settings_manager.get('first_website_for_comparison', 'Ardes,bg')
+        self.second_website_for_comparison = self.settings_manager.get('second_website_for_comparison', 'Desktop.bg')
+        self.part_to_compare_historically = 'GPU'
+
         self.currency_mapping = {
             "🇺🇸 USD - US Dollar": "USD",
             "🇪🇺 EUR - Euro": "EUR", 
@@ -184,10 +189,12 @@ class GUI(ctk.CTk):
         self.scraper_tab = tabview.add("Scraper")
         self.settings_tab = tabview.add("Settings")
         self.info_tab = tabview.add("Info")
+        self.price_history_changes_tab = tabview.add("Price History changes")
 
         self.apply_background_to_tab(self.scraper_tab)
         self.apply_background_to_tab(self.settings_tab)
         self.apply_background_to_tab(self.info_tab)
+        self.apply_background_to_tab(self.price_history_changes_tab)
 
         self.left_panel = ctk.CTkFrame(
             self.scraper_tab, 
@@ -212,6 +219,7 @@ class GUI(ctk.CTk):
 
         self.setup_settings_tab(self.settings_tab)
         self.setup_info_tab(self.info_tab)
+        self.setup_price_history_tab(self.price_history_changes_tab)
 
     def add_panel_content(self):
         left_title = ctk.CTkLabel(
@@ -235,15 +243,15 @@ class GUI(ctk.CTk):
         )
         self.left_entry.place(relx=0.05, rely=0.1) 
         
-        options = ['Ardes.bg', 'AllStore.bg', 'Amazon.co.uk', 'Hits.bg', 'Tova.bg', 'Ezona.bg', 'GtComputers.bg', 'Thx.bg', 'Senetic.bg', 'TehnikStore.bg', 'Pro.bg', 'TechnoMall.bg', 'PcTech.bg', 'CyberTrade.bg', 'Xtreme.bg', 'Optimal Computers', 'Plasico.bg', 'PIC.bg', 'jarcomputers.com', 'Desktop.bg', 'Amazon.com', 'Amazon.de']
-        part_options = ["Motherboard", 'PSU', 'RAM', 'GPU', 'Case', 'Fans', 'CPU', 'AIO', 'Air Coolers', 'Extension Cables', 'HDD', 'SATA SSD', 'NVME SSD']
+        self.options = ['Ardes.bg', 'AllStore.bg', 'Amazon.co.uk', 'Hits.bg', 'Tova.bg', 'Ezona.bg', 'GtComputers.bg', 'Thx.bg', 'Senetic.bg', 'TehnikStore.bg', 'Pro.bg', 'TechnoMall.bg', 'PcTech.bg', 'CyberTrade.bg', 'Xtreme.bg', 'Optimal Computers', 'Plasico.bg', 'PIC.bg', 'jarcomputers.com', 'Desktop.bg', 'Amazon.com', 'Amazon.de']
+        self.part_options = ["Motherboard", 'PSU', 'RAM', 'GPU', 'Case', 'Fans', 'CPU', 'AIO', 'Air Coolers', 'Extension Cables', 'HDD', 'SATA SSD', 'NVME SSD']
 
         self.left_part_select = ctk.CTkComboBox(
             self.left_panel,
             width=170,  
             height=40,
             fg_color=("#FFFFFF", "#1A1A1A"),
-            values=part_options,
+            values=self.part_options,
             corner_radius=20,  
             text_color=("black", "white"),  
             dropdown_fg_color=("#FFFFFF", "#1A1A1A"),  
@@ -260,7 +268,7 @@ class GUI(ctk.CTk):
             width=170,  
             height=40,
             fg_color=("#FFFFFF", "#1A1A1A"),
-            values=options,
+            values=self.options,
             corner_radius=20,
             border_color=[self.primary_color, self.secondary_color],
             text_color=("black", "white"),  
@@ -684,6 +692,7 @@ class GUI(ctk.CTk):
 
             currency_code = getattr(self.scraper, 'preferred_currency', 'BGN')
             symbol = self.currency_symbols.get(currency_code, "лв")
+            self.get_scraper_windows_options()
             output_format = self.scraper_options.output_format_menu.get()
             print(f"DEBUG: Output format preference: {output_format}")
             
@@ -1369,6 +1378,167 @@ class GUI(ctk.CTk):
     """
         info_text.insert("1.0", info_content)
         info_text.configure(state="disabled")
+
+    def setup_price_history_tab(self, tab):
+        info_label = ctk.CTkLabel(tab, text="Price History Comparison", 
+                            font=(self.preferred_font, 20, "bold"))
+        info_label.pack(pady=20)
+
+        self.price_comparison_panel = ctk.CTkFrame(
+            tab, 
+            width=500, 
+            height=700,
+            fg_color=("#FFFFFF", "#1A1A1A"),
+            border_width=2,
+        )
+        self.price_comparison_panel.place(x=60, y=55, relwidth=0.9, relheight=0.9)
+
+        self.left_part_select_comparison = ctk.CTkComboBox(
+            self.price_comparison_panel,
+            width=170,  
+            height=40,
+            fg_color=("#FFFFFF", "#1A1A1A"),
+            values=self.part_options,
+            corner_radius=20,  
+            text_color=("black", "white"),  
+            dropdown_fg_color=("#FFFFFF", "#1A1A1A"),  
+            dropdown_text_color=("black", "white"),
+            state='readonly',
+            command=self.set_part_comparison,
+            font=(self.preferred_font, self.preferred_size)
+        )
+        self.left_part_select_comparison.set("GPU")
+        self.left_part_select_comparison.place(relx=0.02, rely=0.02)
+
+        first_website_value_label = ctk.CTkLabel(
+            self.price_comparison_panel,
+            width=10,
+            text='Choose first websites to compare prices',
+            font=(self.preferred_font, 15, "bold")
+        )
+        first_website_value_label.place(relx=0.2, rely=0.03)
+
+        self.first_website_select_comparison = ctk.CTkComboBox(
+            self.price_comparison_panel,
+            width=170,  
+            height=40,
+            fg_color=("#FFFFFF", "#1A1A1A"),
+            values=self.options,
+            corner_radius=20,
+            border_color=[self.primary_color, self.secondary_color],
+            text_color=("black", "white"),  
+            dropdown_text_color=("black", "white"),
+            state='readonly',
+            command=self.set_first_website_for_comparison,
+            font=(self.preferred_font, self.preferred_size)
+        )
+        self.first_website_select_comparison.set(self.first_website_for_comparison)
+        self.first_website_select_comparison.place(relx=0.5, rely=0.02)
+        
+        self.second_website_select_comparison = ctk.CTkComboBox(
+            self.price_comparison_panel,
+            width=170,  
+            height=40,
+            fg_color=("#FFFFFF", "#1A1A1A"),
+            values=self.options,
+            corner_radius=20,
+            border_color=[self.primary_color, self.secondary_color],
+            text_color=("black", "white"),  
+            dropdown_text_color=("black", "white"),
+            state='readonly',
+            command=self.set_second_website_for_comparison,
+            font=(self.preferred_font, self.preferred_size)
+        )
+        self.second_website_select_comparison.set(self.second_website_for_comparison)
+        self.second_website_select_comparison.place(relx=0.67, rely=0.02)
+
+        self.begin_comparison_button = ctk.CTkButton(
+            self.price_comparison_panel,
+            width=40,
+            height=40,
+            corner_radius=20,
+            font=(self.preferred_font, 15),
+            text='Compare Data',
+            command=self._make_historical_comparison
+        )
+        self.begin_comparison_button.place(relx=0.85, rely=0.02)
+
+    def set_second_website_for_comparison(self, value):
+        self.second_website_for_comparison = value
+        self.settings_manager.set('second_website_for_comparison', value)
+        print(f"second website for comparison is {self.second_website_for_comparison}")
+        
+    def set_first_website_for_comparison(self, value):
+        self.first_website_for_comparison = value
+        self.settings_manager.set('first_website_for_comparison', value)
+        print(f"first website for comparison is {self.first_website_for_comparison}")
+
+    def set_part_comparison(self, part_to_compare):
+        self.part_to_compare_historically = part_to_compare
+        print(f"We are comparing {self.part_to_compare_historically}")
+
+    def _make_historical_comparison(self):
+        """Handle historical comparison with GUI feedback"""
+        error_msg = "" 
+    
+        try:
+            self.get_scraper_windows_options()
+            output_format = self.scraper_options.output_format_menu.get()
+            part_to_compare = self.part_to_compare_historically
+            first_website = self.first_website_for_comparison
+            second_website = self.second_website_for_comparison
+        
+            comparison = HistoricalComparison(
+                output_format, 
+                part_to_compare, 
+                first_website, 
+                second_website
+            )
+        
+            result = comparison.get_summary()
+        
+            if result['status'] == 'ready':
+                first_count = len(comparison.first_website_files)
+                second_count = len(comparison.second_website_files)
+            
+                message = (f"✅ Comparison Ready!\n"
+                      f"📁 {first_website}: {first_count} files\n"
+                      f"📁 {second_website}: {second_count} files\n"
+                      f"📊 Ready to compare {part_to_compare} prices")
+            
+                self._update_comparison_status(message, "green")
+                self.current_comparison = comparison
+            
+                if hasattr(self, 'visualize_button'):
+                    self.visualize_button.configure(state="normal")
+            
+                print(f"Success: {first_count} vs {second_count} files")
+            
+            else:  
+                error_msg = f"❌ Error: {result['message']}"
+                self._update_comparison_status(error_msg, "red")
+                print(f"Error: {result['message']}")
+            
+        except Exception as e:
+            error_msg = f"❌ Unexpected error: {str(e)}"
+            print(f"Comparison error: {traceback.format_exc()}")
+            self._update_comparison_status(error_msg, "red")
+    
+    def _update_comparison_status(self, message, color="green"):
+        """Helper method to update the status label"""
+        if hasattr(self, 'comparison_status_label'):
+            self.comparison_status_label.configure(
+                text=message,
+                text_color=color
+            )
+        else:
+            self.comparison_status_label = ctk.CTkLabel(
+                self.price_comparison_panel,
+                text=message,
+                font=(self.preferred_font, 14),
+                text_color=color
+            )
+            self.comparison_status_label.place(relx=0.02, rely=0.12)
 
     def on_currency_change(self, currency):
         self.preferred_currency = currency

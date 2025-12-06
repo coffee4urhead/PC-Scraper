@@ -25,6 +25,8 @@ class SettingsManager:
             "output_format": "JSON",
             "debug_logs": False,
             "auto_close": True,
+            'first_website_for_comparison': 'Ardes.bg',
+            'second_website_for_comparison': 'Desktop.bg',
             "ui_settings": {
                 "preferred_font": "Verdana",
                 "preferred_size": 15,
