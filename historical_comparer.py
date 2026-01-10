@@ -35,10 +35,24 @@ class HistoricalComparison:
         """Check if both websites have historical files"""
         try:
             base_path = Path("./scrape-history/data")
-            
+
             first_path = base_path / self.file_format.lower() / self.first_website / self.part_for_comparison
             second_path = base_path / self.file_format.lower() / self.second_website / self.part_for_comparison
 
+            print(first_path)
+            print(second_path
+                  )
+            if base_path.exists():
+                print(f"\nDirectories in {base_path}:")
+                for item in base_path.iterdir():
+                    if item.is_dir():
+                        print(f"  - {item.name}")
+                    
+                    # Check if this directory matches our website (case-insensitive)
+                    if self.first_website.lower() in item.name.lower():
+                        print(f"    ⚠️  Possible match for {self.first_website}: {item.name}")
+                    if self.second_website.lower() in item.name.lower():
+                        print(f"    ⚠️  Possible match for {self.second_website}: {item.name}")
             if not first_path.exists() and not second_path.exists():
                 self.error_message = f"Part information for {self.part_for_comparison} not found for {self.first_website} and {self.second_website}. Run a scrape on both wesbites for the particular part and then compare"
                 return False
@@ -51,8 +65,17 @@ class HistoricalComparison:
                 self.error_message = f"Part information for {self.part_for_comparison} not found for {self.second_website}. Run a scrape on {self.second_website} wesbite for the particular part and then compare"
                 return False
             
-            self.first_website_files = [f.name for f in first_path.iterdir() if f.is_file() and not f.name.startswith('.')]
-            self.second_website_files = [f.name for f in second_path.iterdir() if f.is_file() and not f.name.startswith('.')]
+            self.first_website_files = []
+            for f in first_path.iterdir():
+                if f.is_file() and not f.name.startswith('.'):
+                    if f.suffix.lower() in ['.csv', '.json']:
+                        self.first_website_files.append(f.name)
+        
+            self.second_website_files = []
+            for f in second_path.iterdir():
+                if f.is_file() and not f.name.startswith('.'):
+                    if f.suffix.lower() in ['.csv', '.json']:
+                        self.second_website_files.append(f.name)
 
             self.first_website_files.sort(key=self._extract_date_from_filename, reverse=True)
             self.second_website_files.sort(key=self._extract_date_from_filename, reverse=True)
