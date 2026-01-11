@@ -12,7 +12,7 @@ from FileCreators.TableMaker import TableMaker as tm
 from FileCreators import JSON_creator as jsc
 from FileCreators import CSV_creator as cs
 from windows.scraper_options_window import ScraperOptionsWindow
-from windows.gui_setup_class import SetupGUI
+from gui_classes.setup_gui_main import SetupGUI
 from currency_converter import RealCurrencyConverter
 from scrapers.desktop_bg_scraper import DesktopScraper
 
@@ -126,18 +126,66 @@ class GUI(ctk.CTk):
         self.scraper_options = None
         self.setup_gui()
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
+        self._on_website_selection = self._handle_website_selection
+        self.on_selection = self._handle_part_selection
+        self._connect_gui_callbacks()
         self.apply_custom_colors = self.gui.apply_custom_colors
         self.after(100, self.apply_custom_colors)
 
-    def setup_gui(self):
-        self.gui.setup_background()
-        self.gui.create_panels()
-        self.add_panel_content = self.gui.add_panel_content
-        self.apply_background_to_tab = self.gui.apply_background_to_tab
-        self.gui._make_historical_comparison = self._make_historical_comparison
-        self.gui.add_panel_content()
+    def _handle_website_selection(self, selected_website):
+        """Handle website selection"""
+        print(f"Website selected: {selected_website}")
+        self.selected_website = selected_website
+        
+        if hasattr(self, 'gui') and hasattr(self.gui, 'on_selection_instantiate'):
+            return self.gui.on_selection_instantiate(selected_website)
+        return None
     
-        self.gui.add_panel_content()
+    def _handle_part_selection(self, selected_part):
+        """Handle part selection"""
+        print(f"Part selected: {selected_part}")
+        self.selected_pc_part = selected_part
+    
+    def _handle_scraping(self):
+        """Handle scraping start"""
+        print("Starting scraping...")
+        self._start_scraping()
+        
+    def _connect_gui_callbacks(self):
+        """Connect the GUI callbacks to your methods"""
+        if hasattr(self.gui, 'begin_comparison_button'):
+            self.gui.begin_comparison_button.configure(command=self._make_historical_comparison)
+        
+        if hasattr(self.gui, 'refresh_gui_button'):
+            self.gui.refresh_gui_button.configure(command=self.setup_gui)
+        
+        if hasattr(self, 'left_website_select'):
+            self.left_website_select.configure(command=self._on_website_selection)
+        
+        if hasattr(self, 'left_part_select'):
+            self.left_part_select.configure(command=self.on_selection)
+        
+        if hasattr(self, 'left_scrape_button'):
+            self.left_scrape_button.configure(command=self._start_scraping)
+
+        if hasattr(self, 'left_select_folder_button'):
+            self.left_select_folder_button.configure(command=self.ask_save_dir)
+
+        if hasattr(self, 'options_menu'):
+            self.options_menu.configure(command=self.get_scraper_windows_options)
+    
+    def setup_gui(self):
+        """Setup the entire GUI using the new modular class"""
+        self.gui.setup()
+        
+        print(f"GUI setup complete. Widgets available:")
+        print(f"  - Entry: {hasattr(self, 'left_entry')}")
+        print(f"  - Console: {hasattr(self, 'right_console')}")
+        print(f"  - Scraper: {hasattr(self, 'current_scraper')}")
+
+        if hasattr(self, 'right_console'):
+            self.right_console.delete("1.0", "end")
+            self.update_gui("GUI initialized successfully. Ready to scrape!")
 
     def _on_submit(self):
         self.left_part_select.configure(state='disabled')
@@ -225,56 +273,79 @@ class GUI(ctk.CTk):
     def _process_scraper_update(self, data):
         """Tkinter callback - must be synchronous (remove async)"""
         try:
-            if data['type'] == 'progress':
-                self.progress_bar.set(data['value'] / 100)
+            if isinstance(data, str):
+                self.right_console.insert('end', f"{data}\n")
+                self.right_console.see('end')
+                return
+        
+            if not isinstance(data, dict):
+                self.right_console.insert('end', f"Unexpected data type: {type(data)} - {str(data)[:100]}...\n")
+                self.right_console.see('end')
+                return
+        
+            data_type = data.get('type', 'unknown')
+        
+            if data_type == 'progress':
+                progress_value = data.get('value', 0)
+                self.progress_bar.set(progress_value / 100)
                 self.status_label.configure(
-                    text=f"Scraping... {data['value']}% complete",
+                    text=f"Scraping... {progress_value}% complete",
                     text_color="blue"
                 )
 
-            elif data['type'] == 'product':
-                product = data['data']
-                self.all_products.append(product)
+            elif data_type == 'product':
+                product = data.get('data', {})
+                if product:
+                    self.all_products.append(product)
 
-                actual_display_text = "\n".join(f"{label} -> {value}" for label, value in product.items()) + f"{'-' * 50}\n"
+                    display_text = (
+                        f"Product Found:\n"
+                        f"• Title: {product.get('title', 'N/A')}\n"
+                        f"• Price: {product.get('price', 'N/A')}\n"
+                        f"• URL: {product.get('url', 'N/A')}\n"
+                        f"• Brand: {product.get('brand', 'N/A')}\n"
+                        f"• Page: {data.get('page', 'N/A')}\n"
+                        f"{'-' * 50}\n"
+                    )
+                    self.right_console.insert('end', display_text)
+                    self.right_console.see('end')
 
-                display_text = (
-                    f"GPU Found:\n"
-                    f"• Title: {product['title']}\n"
-                    f"• Price: {product.get('price', 'N/A')}\n"
-                    f"• URL: {product.get('url', 'N/A')}\n"
-                    f"• Brand: {product.get('brand', 'N/A')}\n"
-                    f"• GPU model: {product.get('gpu_model', 'N/A')}\n"
-                    f"• Graphics Coprocessor: {product.get('graphics_coprocessor', 'N/A')}\n"
-                    f"• Graphics Ram size: {product.get('graphics_ram_size', 'N/A')}\n"
-                    f"• GPU clock speed: {product.get('gpu_clock_speed', 'N/A')}\n"
-                    f"• Video Output resolution: {product.get('video_output_resolution', 'N/A')}\n"
-                    f"• Page: {data.get('page', 'N/A')}\n"
-                    f"{'-' * 50}\n"
-                )
-                self.right_console.insert('end', actual_display_text)
-                self.right_console.see('end') 
-
-            elif data['type'] == 'error':
-                self.right_console.insert('end', f"ERROR: {data['message']}\n\n")
-                self.status_label.configure(text=f"Error: {data['message']}", text_color="red")
+            elif data_type == 'error':
+                error_message = data.get('message', 'Unknown error')
+                self.right_console.insert('end', f"ERROR: {error_message}\n\n")
+                self.status_label.configure(text=f"Error: {error_message}", text_color="red")
                 self.progress_bar.set(0)
 
-            elif data['type'] == 'complete':
+            elif data_type == 'complete':
                 self.status_label.configure(text="Processing results...", text_color="orange")
-                self.reconfigure_back_property(self.left_scrape_button, True)
-                self.reconfigure_back_property(self.left_entry, True)
-                self.reconfigure_back_property(self.left_website_select, True)
-                self.reconfigure_back_property(self.left_part_select, True)
+            
+                for widget_name in ['left_scrape_button', 'left_entry', 'left_website_select', 'left_part_select']:
+                    if hasattr(self, widget_name):
+                        widget = getattr(self, widget_name)
+                        self.reconfigure_back_property(widget, True)
 
                 threading.Thread(
                     target=self._convert_prices_and_create_excel,
-                daemon=True
+                    daemon=True
                 ).start()
 
+            elif data_type == 'status':
+                status_message = data.get('message', '')
+                if status_message:
+                    self.right_console.insert('end', f"STATUS: {status_message}\n")
+                    self.right_console.see('end')
+                    self.status_label.configure(text=status_message, text_color="blue")
+
+            else:
+                self.right_console.insert('end', f"DEBUG: Unknown data type '{data_type}': {str(data)[:200]}...\n")
+                self.right_console.see('end')
+
         except Exception as e:
-            self.right_console.insert('end', f"GUI Update Error: {str(e)}\n\n")
-            self.status_label.configure(text=f"Update Error: {str(e)}", text_color="red")
+            error_msg = f"GUI Update Error: {str(e)}\n"
+            self.right_console.insert('end', error_msg)
+            self.right_console.see('end')
+            self.status_label.configure(text=f"Update Error: {str(e)[:50]}", text_color="red")
+            print(f"GUI Error: {e}\nData received: {data}")
 
     def _convert_prices_and_create_excel(self):
         """Run currency conversion and Excel creation in background thread"""
@@ -493,11 +564,20 @@ class GUI(ctk.CTk):
                 widget.configure(
                 button_color=self.primary_color,
                 button_hover_color=self.secondary_color,
+                border_color=self.secondary_color,
                 fg_color=("#FFFFFF", "#1A1A1A"),
                 text_color=("black", "white"),
                 dropdown_fg_color=("#FFFFFF", "#1A1A1A"),
                 dropdown_hover_color=(self.primary_color, self.secondary_color),
                 dropdown_text_color=("black", "white")
+            )
+
+        if isinstance(widget, ctk.CTkEntry):
+            widget.configure(
+                fg_color=("#FFFFFF", "#1A1A1A"),
+                border_color=self.primary_color,
+                placeholder_text_color=("grey", "lightgrey"),
+                text_color=("black", "white"),
             )
 
         if isinstance(widget, ctk.CTkFrame):

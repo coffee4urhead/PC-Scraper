@@ -2,7 +2,7 @@
     "preferred_currency": "BGN",
     "price_format": "0.00",
     "preferred_browser": "Chrome",
-    "headless": false,
+    "headless": true,
     "max_pages": 10,
     "delay_between_requests": 2.0,
     "random_delay_multiplier": 1.5,
@@ -13,14 +13,14 @@
     "debug_logs": 0,
     "auto_close": 1,
     "first_website_for_comparison": "Ardes.bg",
-    "second_website_for_comparison": "Desktop.bg",
+    "second_website_for_comparison": "AllStore.bg",
     "ui_settings": {
-        "preferred_font": "Candara",
-        "preferred_size": "17",
+        "preferred_font": "Wingdings",
+        "preferred_size": "20",
         "preferred_theme": "System",
-        "preferred_language": "bg-BG",
-        "primary_color": "#f1e324",
-        "secondary_color": "#f18e24",
+        "preferred_language": "ja-JP",
+        "primary_color": "#20B2AA",
+        "secondary_color": "#008B8B",
         "save_folder": "/home/demian/Desktop"
     }
 }

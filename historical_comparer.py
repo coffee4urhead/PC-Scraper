@@ -48,7 +48,6 @@ class HistoricalComparison:
                     if item.is_dir():
                         print(f"  - {item.name}")
                     
-                    # Check if this directory matches our website (case-insensitive)
                     if self.first_website.lower() in item.name.lower():
                         print(f"    ⚠️  Possible match for {self.first_website}: {item.name}")
                     if self.second_website.lower() in item.name.lower():
