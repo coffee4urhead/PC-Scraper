@@ -1,8 +1,8 @@
 import re
 from urllib.parse import quote, urljoin
-from .base_scraper import PlaywrightBaseScraper
+from .base_scraper import AsyncPlaywrightBaseScraper
 
-class SeneticScraper(PlaywrightBaseScraper):
+class SeneticScraper(AsyncPlaywrightBaseScraper):
     def __init__(self, website_currency, update_gui_callback=None):
         super().__init__(website_currency, update_gui_callback)
         self.base_url = "https://www.senetic.bg/"

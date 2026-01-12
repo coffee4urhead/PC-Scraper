@@ -2,7 +2,6 @@ import customtkinter as ctk
 from tkinter import filedialog
 from dotenv import load_dotenv
 import os
-import json
 import threading
 import traceback
 import sys
@@ -203,7 +202,43 @@ class GUI(ctk.CTk):
             self.progress_bar['value'] = 0
             self.status_label.configure(text="Starting scrape...")
             self.all_products.clear()
-            self.scraper.start_scraping(search_term)
+        
+            threading.Thread(
+                target=self._run_async_scraper,
+                args=(search_term,),
+                daemon=True
+            ).start()
+
+    def _run_async_scraper(self, search_term):
+        """Run the async scraper in a background thread"""
+        import asyncio
+    
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+            loop.run_until_complete(
+                self.scraper.start_scraping_async(search_term)
+            )
+        
+        except Exception as e:
+            error_msg = f"Scraping error: {str(e)}"
+            print(error_msg)
+
+            self.after(0, lambda: self._handle_scraping_error(error_msg))
+
+        finally:
+            if loop and not loop.is_closed():
+                loop.close()
+
+    def _handle_scraping_error(self, error_message):
+        """Handle scraping errors on the main thread"""
+        self.status_label.configure(
+            text=f"Error: {error_message}", 
+            text_color="red"
+        )
+        self.right_console.insert('end', f"ERROR: {error_message}\n\n")
+        self.progress_bar.set(0)
 
     def ask_save_dir(self): 
         folder_path = filedialog.askdirectory(title="Select Folder to Save Excel", initialdir=self.save_folder)
