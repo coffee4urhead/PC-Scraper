@@ -15,12 +15,12 @@
     "first_website_for_comparison": "Ardes.bg",
     "second_website_for_comparison": "AllStore.bg",
     "ui_settings": {
-        "preferred_font": "Wingdings",
+        "preferred_font": "Lucida Console",
         "preferred_size": "20",
         "preferred_theme": "System",
         "preferred_language": "ja-JP",
-        "primary_color": "#20B2AA",
-        "secondary_color": "#008B8B",
-        "save_folder": "/home/demian/Desktop"
+        "primary_color": "#FFA500",
+        "secondary_color": "#FF8C00",
+        "save_folder": "/home/demian/Desktop/ScrapeProducts"
     }
 }

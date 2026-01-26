@@ -1,3 +1,4 @@
+import random
 import re
 from urllib.parse import urljoin, quote, urlparse, parse_qs, urlencode, urlunparse
 from scrapers.base_scraper import AsyncPlaywrightBaseScraper
@@ -9,22 +10,25 @@ class ArdesScraper(AsyncPlaywrightBaseScraper):
     def __init__(self, website_currency, update_gui_callback=None):
         super().__init__(website_currency, update_gui_callback)
         self.base_domain = "https://www.ardes.bg"
+        self.update_gui_callback = update_gui_callback
+        self.current_page = 1
 
     def _get_base_url(self, search_term):
         """Generate clean search URL without restrictive parameters"""
         encoded_term = quote(search_term)
         return f"https://www.ardes.bg/products?q={encoded_term}"
 
-    def _construct_page_url(self, base_url, search_term, page):
+    #changes in the page iterator to handle pagination
+    def _construct_page_url(self, base_url, search_term):
         """Construct paginated URL properly for Ardes"""
-        if page == 1:
+        if self.current_page == 1:
             return base_url
         
         parsed_url = urlparse(base_url)
         query_params = parse_qs(parsed_url.query)
-        
-        query_params['page'] = [str(page)]
-        
+
+        query_params['page'] = [str(self.current_page)]
+
         new_query = urlencode(query_params, doseq=True)
         new_url = urlunparse((
             parsed_url.scheme,
@@ -34,14 +38,15 @@ class ArdesScraper(AsyncPlaywrightBaseScraper):
             new_query,
             parsed_url.fragment
         ))
-        
+        self.current_page += 1
         return new_url
 
     async def _extract_product_links(self, page: Page, page_url: str) -> List[str]:
         """Get all product links using Playwright"""
         product_links = []
         print(f"DEBUG: Extracting product links from: {page_url}")
-
+        await page.mouse.wheel(0, random.randint(400, 900))
+        
         try:
             await page.goto(page_url, wait_until='domcontentloaded', timeout=30000)
             print(f"DEBUG: Page loaded: {page_url}")
@@ -55,105 +60,23 @@ class ArdesScraper(AsyncPlaywrightBaseScraper):
                 print(f"DEBUG: Screenshot saved to {screenshot_path}")
                 return []
 
-            selectors_to_try = [
-                'div.products-grid div.prod-col',
-                'div.prod-col',
-                '.product-item',
-                '.product-card',
-                '.search-result-item'
-            ]
+            link_elements = await page.query_selector_all('div.product-head > a[href]')
+        
+            print(f"DEBUG: Found {len(link_elements)} link elements")
+        
+            product_links = []
+        
+            for link in link_elements:
+                try:
+                    href = await link.get_attribute('href')
+                    if href:
+                        full_url = urljoin(self.base_domain, href)
+                        product_links.append(full_url)
+                except Exception as e:
+                    print(f"DEBUG: Error processing link: {e}")
+                    continue
+                print(f"DEBUG: Total Ardes product links found: {len(product_links)}")
             
-            product_elements = []
-            for selector in selectors_to_try:
-                elements = await page.query_selector_all(selector)
-                if elements:
-                    product_elements = elements
-                    print(f"DEBUG: Found {len(product_elements)} product elements with selector: {selector}")
-                    break
-            
-            if not product_elements:
-                print(f"DEBUG: No product elements found on page")
-                page_content = await page.content()
-                print(f"DEBUG: Page content (first 1000 chars): {page_content[:1000]}")
-                return []
-
-            for i, product in enumerate(product_elements):
-                if hasattr(self, '_stop_requested') and self._stop_requested:
-                    break
-
-                print(f"DEBUG: Processing product {i+1}/{len(product_elements)}")
-                
-                await asyncio.sleep(0.05)
-            
-                link_selectors = [
-                    'a[href^="/product/"]',
-                    'a[href*="/product/"]',
-                    'a.prod-link',
-                    'a.title-link',
-                    'a[itemprop="url"]',
-                    'a'
-                ]
-            
-                link_element = None
-                href = None
-                for selector in link_selectors:
-                    try:
-                        link_element = await product.query_selector(selector)
-                        if link_element:
-                            href = await link_element.get_attribute('href')
-                            if href and '/product/' in href:
-                                print(f"DEBUG: Found link with selector '{selector}': {href}")
-                                break
-                    except Exception as e:
-                        print(f"DEBUG: Error with selector {selector}: {e}")
-                        continue
-                    link_element = None
-
-                if href:
-                    full_url = urljoin(self.base_domain, href)
-                    clean_url = full_url.split('?')[0]
-                
-                    if '/product/' in clean_url and clean_url not in product_links:
-                        title = "No Title"
-                        title_selectors = [
-                            '.prod-title',
-                            '.title',
-                            '.product-title',
-                            'h3',
-                            'h4',
-                            '[itemprop="name"]'
-                        ]
-                        
-                        for title_selector in title_selectors:
-                            try:
-                                title_element = await product.query_selector(title_selector)
-                                if title_element:
-                                    title_text = await title_element.inner_text()
-                                    if title_text:
-                                        title = title_text.strip()
-                                        break
-                            except:
-                                continue
-
-                        temp_product_data = {'title': title, 'description': ''}
-                        
-                        if self._should_filter_by_keywords(temp_product_data):
-                            print(f'DEBUG: Skipped product based on exclusion keywords: {title}')
-                            continue
-                        
-                        product_links.append(clean_url)
-                        print(f"DEBUG: Added Ardes product: {title} - {clean_url}")
-                    else:
-                        print(f"DEBUG: Skipping URL (not a product or duplicate): {clean_url}")
-                else:
-                    print(f"DEBUG: Product {i+1} - No valid href found")
-                    try:
-                        product_html = await product.inner_text()
-                        print(f"DEBUG: Product text: {product_html[:200]}...")
-                    except:
-                        pass
-
-            print(f"DEBUG: Total Ardes product links found: {len(product_links)}")
             return product_links
 
         except Exception as e:
@@ -167,115 +90,73 @@ class ArdesScraper(AsyncPlaywrightBaseScraper):
         print(f"DEBUG: Parsing Ardes product: {product_url}")
         
         try:
-            await page.goto(product_url, wait_until='domcontentloaded', timeout=30000)
+            for _ in range(3): 
+                await page.goto(product_url, wait_until='domcontentloaded', timeout=30000)
+                await self._rate_limit()
+                try:
+                    await page.wait_for_selector('div.product-title', timeout=15000)
+                except Exception as e:
+                    print(f"DEBUG: Could not find product title: {e}")
+                    await page.wait_for_selector('h1, .title, [itemprop="name"]', timeout=5000)
 
-            try:
-                await page.wait_for_selector('div.product-title, h1.product-title, h1[itemprop="name"]', timeout=15000)
-            except Exception as e:
-                print(f"DEBUG: Could not find product title: {e}")
-                await page.wait_for_selector('h1, .title, [itemprop="name"]', timeout=5000)
-
-            title = "No Title"
-            title_selectors = [
-                'div.product-title h1',
-                'h1.product-title',
-                'h1[itemprop="name"]',
-                'h1'
-            ]
-            
-            for selector in title_selectors:
-                title_element = await page.query_selector(selector)
+                title_element = await page.query_selector('div.product-title h1')
+                title = ""
                 if title_element:
-                    title_text = await title_element.inner_text()
-                    if title_text:
-                        title = title_text.strip()
-                        break
-            
-            price = 0.0
-            price_selectors = [
-                'span.bgn-price',
-                '.price-tag',
-                '.product-price',
-                '.price',
-                '[itemprop="price"]',
-                '.current-price'
-            ]
-            
-            for selector in price_selectors:
-                price_element = await page.query_selector(selector)
+                    title = await title_element.inner_text()
+                    title = title.strip()
+
+                price = 0.0
+
+                price_element = await page.query_selector('span.bgn-price')
                 if price_element:
+                    price = await price_element.inner_text()
+                    print(f"DEBUG: Raw price text: {price}")
+
+                    price_text = price.strip()
+                    price_text = re.sub(r'[^\d,.-]', '', price_text)
+                    price_text = price_text.replace(',', '.')
+
                     try:
-                        price_text = await price_element.inner_text()
-                        price_text = price_text.strip()
+                        price = float(price_text)
+                        print(f"DEBUG: Parsed price: {price}")
+                    except ValueError:
+                        print(f"DEBUG: Could not parse price to float: {price_text}")
+                        price = 0.0
+                else:
+                    print("DEBUG: Price element not found")
+                
+                product_data = {}
+                tech_specs_list = await page.query_selector('ul.tech-specs-list')
+                if tech_specs_list:
+                    list_items = await tech_specs_list.query_selector_all('li')
+                    for li in list_items:
+                        try:
+                            if li:
+                                label_element = await li.query_selector('span')
+                                value_text = (await li.inner_text()).strip()  
+                                label = (await label_element.inner_text()).strip() if label_element else ''
+                                value = value_text.replace(label, '').strip() if label else value_text
                         
-                        price_text = re.sub(r'[^\d.,]', '', price_text)
-                        price_text = price_text.replace(',', '.')
-                        
-                        match = re.search(r'\d+\.?\d*', price_text)
-                        if match:
-                            price = float(match.group())
-                            print(f"DEBUG: Found price with selector '{selector}': {price}")
-                            break
-                    except Exception as e:
-                        print(f"DEBUG: Error parsing price with selector '{selector}': {e}")
-                        continue
-            
+                                product_data[label] = value
+                                print(f"DEBUG: Added property from list: {label} = {value}")
+                        except Exception as e:
+                            print(f"DEBUG: Skipping tech specs list item: {str(e)}")
+                            continue
+
             if price == 0.0:
                 print(f"DEBUG: Could not find price for product: {title}")
-        
-            product_data = {
+
+            product_data.update({
                 'title': title,
                 'price': price,
                 'url': product_url,
                 'currency': self.website_currency,
-                'source': 'Ardes'
-            }
-
+                'source': 'Ardes.bg',
+                'page': self.current_page
+            })
             print(f"DEBUG: Extracted Ardes product: {title} - {price} {self.website_currency}")
-
-            try:
-                table_selectors = [
-                    'table.table',
-                    'table.specifications',
-                    'table.tech-spec',
-                    'table[class*="spec"]',
-                    'table'
-                ]
-                
-                tech_table = None
-                for selector in table_selectors:
-                    tech_table = await page.query_selector(selector)
-                    if tech_table:
-                        break
-                
-                if tech_table:
-                    list_items = await tech_table.query_selector_all('tr')
-                    for list_item in list_items:
-                        try:
-                            label_element = await list_item.query_selector('th.clmn-head, th, td.label')
-                            value_elements = await list_item.query_selector_all('td')
-
-                            if label_element and len(value_elements) >= 1:
-                                label = await label_element.inner_text()
-                                value_element = value_elements[1] if len(value_elements) > 1 else value_elements[0]
-                                value = await value_element.inner_text()
-                                
-                                label = label.strip() if label else ""
-                                value = value.strip() if value else ""
-
-                                if label and value:
-                                    clean_label = re.sub(r'[:：\s]+$', '', label)
-                                    product_data[clean_label] = value
-                                    print(f"DEBUG: Added property: {clean_label} = {value}")
-                        
-                        except Exception as e:
-                            print(f"DEBUG: Skipping table row: {str(e)}")
-                            continue
-            except Exception as e:
-                print(f"DEBUG: Error extracting technical specs: {e}")
-
-            print(f"DEBUG: Successfully parsed Ardes product: {title}")
             return product_data
+
 
         except Exception as e:
             print(f"DEBUG: Error parsing Ardes product page: {e}")
@@ -285,6 +166,7 @@ class ArdesScraper(AsyncPlaywrightBaseScraper):
 
     async def _get_total_pages(self, page: Page, base_url: str) -> int:
         """Get total number of pages for pagination"""
+        await page.mouse.wheel(0, random.randint(400, 900))
         try:
             await page.goto(base_url, wait_until='domcontentloaded', timeout=30000)
             

@@ -8,6 +8,7 @@ import sys
 
 from settings_manager import SettingsManager
 from FileCreators.TableMaker import TableMaker as tm
+from scrapers.cpu_memory_manager import CPUMemoryManagerClass
 from FileCreators import JSON_creator as jsc
 from FileCreators import CSV_creator as cs
 from windows.scraper_options_window import ScraperOptionsWindow
@@ -120,6 +121,10 @@ class GUI(ctk.CTk):
         
         self.selected_website = "Desktop.bg"
         self.scraper = DesktopScraper('BGN', self.update_gui)
+        self.scraper_list = []
+        self.cpu_manager = CPUMemoryManagerClass()
+        self.website_selection_limit = self.cpu_manager.get_optimal_worker_count()
+        self.selected_websites = []
         self.settings_manager.apply_to_scraper(self.scraper)
         self.all_products = []
         self.scraper_options = None
@@ -330,6 +335,9 @@ class GUI(ctk.CTk):
 
             elif data_type == 'product':
                 product = data.get('data', {})
+                print(f"DEBUG update_gui called with: {type(data)}")
+                print(product)
+
                 if product:
                     self.all_products.append(product)
 
@@ -338,8 +346,8 @@ class GUI(ctk.CTk):
                         f"• Title: {product.get('title', 'N/A')}\n"
                         f"• Price: {product.get('price', 'N/A')}\n"
                         f"• URL: {product.get('url', 'N/A')}\n"
-                        f"• Brand: {product.get('brand', 'N/A')}\n"
-                        f"• Page: {data.get('page', 'N/A')}\n"
+                        f"• Source: {product.get('source', 'N/A')}\n"
+                        f"• Page: {product.get('page', 'N/A')}\n"
                         f"{'-' * 50}\n"
                     )
                     self.right_console.insert('end', display_text)
@@ -420,6 +428,7 @@ class GUI(ctk.CTk):
             symbol = self.currency_symbols.get(currency_code, "лв")
             output_format = self.settings_manager.get("output_format", 'Excel')
             print(f"DEBUG: Output format preference: {output_format}")
+            print(self.all_products)
             
             if output_format == 'JSON':
                 print("JSON preferred!")

@@ -13,6 +13,8 @@ import threading
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# we need to fix the doubling of the results in the file
+
 class AsyncPlaywrightBaseScraper(ABC):
     """Async version of the base scraper for massive performance gains"""
     
@@ -84,7 +86,7 @@ class AsyncPlaywrightBaseScraper(ABC):
         self._stop_event.set()
         
         for task in self._active_tasks:
-            if not task.done():
+            if not task.done() and not getattr(task, '_shielded', False):
                 task.cancel()
         
         self._update_gui({
@@ -139,10 +141,12 @@ class AsyncPlaywrightBaseScraper(ABC):
     async def _distributed_scrape(self, search_term: str, max_pages: int, num_workers: int) -> List[Dict[str, Any]]:
         """Distribute scraping across multiple processes/cores with stop support"""
         
-        pages_per_worker = max(1, max_pages // num_workers)
+        pages_per_worker = 2
         worker_tasks = []
         
-        for worker_id in range(num_workers):
+        # Here we will invoke scrapers to one one workeer based on the PC!!
+
+        for worker_id in range(1):
             start_page = worker_id * pages_per_worker + 1
             end_page = min((worker_id + 1) * pages_per_worker, max_pages)
             
@@ -150,6 +154,7 @@ class AsyncPlaywrightBaseScraper(ABC):
                 task = asyncio.create_task(
                     self._worker_scrape(search_term, start_page, end_page, worker_id)
                 )
+                task._shielded = True
                 worker_tasks.append(task)
                 self._active_tasks.append(task)
         
@@ -167,18 +172,29 @@ class AsyncPlaywrightBaseScraper(ABC):
             
         except asyncio.CancelledError:
             logger.info("Tasks cancelled")
-            for task in worker_tasks:
-                if not task.done():
-                    task.cancel()
+            if worker_tasks:
+                done, pending = await asyncio.wait(
+                    worker_tasks,
+                    timeout=10.0,  
+                    return_when=asyncio.ALL_COMPLETED
+                )
+
+                for task in pending:
+                    if not task.done() and not getattr(task, '_shielded', False):
+                        task.cancel()
+                
             raise
     
     async def _worker_scrape(self, search_term: str, start_page: int, end_page: int, worker_id: int) -> List[Dict[str, Any]]:
         """Single worker scraping a range of pages with stop support"""
-        
+        browser = None
+        context = None
+        results = []
+
         if self._stop_requested:
             logger.info(f"Worker {worker_id}: Stop requested before start")
             return []
-        
+
         self.cpu_manager.set_worker_affinity(worker_id)
     
         browser = None
@@ -186,23 +202,40 @@ class AsyncPlaywrightBaseScraper(ABC):
         
         try:
             async with async_playwright() as p:
-                browser = await p.chromium.launch(
-                    headless=self.headless,
+                browser = await asyncio.shield(p.chromium.launch(
+                    headless=False,
                     args=[
-                        '--disable-dev-shm-usage',
-                        '--no-sandbox',
-                        '--disable-gpu'
+                        '--start-maximized',
+                        '--disable-blink-features=AutomationControlled',
                     ]
-                )
-                
+                ))
+                viewports = [
+                    {'width': 1920, 'height': 1080},
+                    {'width': 1366, 'height': 768},
+                    {'width': 1536, 'height': 864},
+                    {'width': 1440, 'height': 900}
+                ]
+
+                user_agent = await self._get_random_user_agent()
+
+                context = await browser.new_context(
+                    user_agent=user_agent,
+                    viewport=random.choice(viewports),
+                    locale='bg-BG',
+                    timezone_id='Europe/Sofia',
+                    color_scheme='light',
+                    reduced_motion='no-preference',
+                    java_script_enabled=True,
+                )   
+
                 for page_num in range(start_page, end_page + 1):
                     if self._stop_requested or self._stop_event.is_set():
                         logger.info(f"Worker {worker_id}: Stop requested at page {page_num}")
                         break
                     
-                    page_results = await self._scrape_single_page_async(
-                        browser, search_term, page_num, worker_id
-                    )
+                    page_results = await asyncio.shield(self._scrape_single_page_async(
+                        context, search_term, page_num, worker_id
+                    ))
                     results.extend(page_results)
                     
                     if self._stop_requested:
@@ -226,7 +259,7 @@ class AsyncPlaywrightBaseScraper(ABC):
                             pass  
                 
                 return results
-                
+
         except asyncio.CancelledError:
             logger.info(f"Worker {worker_id} cancelled")
             return results
@@ -234,164 +267,153 @@ class AsyncPlaywrightBaseScraper(ABC):
             logger.error(f"Worker {worker_id} failed: {e}")
             return results
         finally:
-            if browser:
-                await browser.close()
-    
-    async def _scrape_single_page_async(self, browser, search_term: str, page_num: int, worker_id: int) -> List[Dict[str, Any]]:
-        """Scrape a single page and all its products concurrently with stop support"""
-        
+            try:
+                if context:
+                    await asyncio.shield(context.close())
+                if browser:
+                    await asyncio.shield(browser.close())
+            except:
+                pass
+
+    async def _scrape_single_page_async(self, context, search_term: str, page_num: int, worker_id: int) -> List[Dict[str, Any]]:
+        self._update_gui({"type": "progress", 'data': page_num})
         if self._stop_requested:
             return []
-        
+
         await self._rate_limit()
-        page_url = self._construct_page_url(self._get_base_url(search_term), search_term, page_num)
+
+        page_url = self._construct_page_url(
+            self._get_base_url(search_term),
+            search_term,
+        )
+
         if not page_url:
             logger.warning(f"Worker {worker_id}: No URL for page {page_num}")
             return []
-        
-        logger.info(f"Worker {worker_id}: Scraping page {page_num}: {page_url}")
-        
-        user_agent = await self._get_random_user_agent()
-        context = await browser.new_context(
-            user_agent=user_agent,
-            viewport={'width': 1920, 'height': 1080},
-            locale='en-US',
-            timezone_id='Europe/Sofia',
-            permissions=[],
-            extra_http_headers={
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.5',
-                'Accept-Encoding': 'gzip, deflate, br',
-                'Connection': 'keep-alive',
-                'Upgrade-Insecure-Requests': '1',
-                'Sec-Fetch-Dest': 'document',
-                'Sec-Fetch-Mode': 'navigate',
-                'Sec-Fetch-Site': 'none',
-                'Sec-Fetch-User': '?1',
-                'Cache-Control': 'max-age=0',
-            }
-        )
-        
-        try:
-            page = await context.new_page()
 
-            await page.goto(page_url, wait_until='domcontentloaded', timeout=30000)
-            
+        logger.info(f"Worker {worker_id}: Scraping page {page_num}: {page_url}")
+
+        try:
+            if not hasattr(context, "_main_page"):
+                context._main_page = await context.new_page()
+
+            page = context._main_page
+            page.set_default_timeout(60000)
+            await page.goto(page_url, wait_until="domcontentloaded", timeout=30000)
+
             if self._stop_requested:
                 return []
-            
+
+            await asyncio.sleep(random.uniform(1.5, 3.0))
+
             product_links = await self._extract_product_links_async(page, page_url)
-            
+
             if not product_links:
                 logger.warning(f"Worker {worker_id}: No products found on page {page_num}")
                 return []
-            
-            logger.info(f"Worker {worker_id}: Found {len(product_links)} products on page {page_num}")
-            
-            product_tasks = []
-            for product_url in product_links:
-                if self._stop_requested:
-                    break
-                
-                task = asyncio.create_task(
-                    self._scrape_single_product_async(browser, product_url, worker_id)
-                )
-                product_tasks.append(task)
-                self._active_tasks.append(task)
+
+            logger.info(
+                f"Worker {worker_id}: Found {len(product_links)} products on page {page_num}"
+            )
+
+            await page.evaluate("window.scrollTo(0, Math.random() * 500)")
+            await asyncio.sleep(random.uniform(0.5, 1.5))
 
             semaphore = asyncio.Semaphore(self.max_concurrent_products)
-            
-            async def limited_task(task):
+
+            async def scrape_with_delay(product_url: str):
                 async with semaphore:
                     if self._stop_requested:
                         return None
-                    return await task
-            
-            limited_tasks = [limited_task(task) for task in product_tasks]
-            
+
+                    await asyncio.sleep(random.uniform(2.5, 5.0))
+
+                    return await self._scrape_single_product_async(
+                        page, product_url, worker_id
+                    )
+
+            tasks = [
+                scrape_with_delay(url)
+                for url in product_links
+                if not self._stop_requested
+            ]
+
             try:
                 product_results = await asyncio.wait_for(
-                    asyncio.gather(*limited_tasks, return_exceptions=True),
-                    timeout=120.0  
+                    asyncio.gather(*tasks, return_exceptions=True),
+                    timeout=300.0
                 )
             except asyncio.TimeoutError:
                 logger.warning(f"Worker {worker_id}: Page {page_num} timed out")
-                for task in product_tasks:
-                    if not task.done():
-                        task.cancel()
-                product_results = []
-            
+                return []
+
             valid_results = []
+
             for result in product_results:
                 if isinstance(result, Exception):
                     if not isinstance(result, asyncio.CancelledError):
                         logger.error(f"Product scraping error: {result}")
                 elif result:
                     valid_results.append(result)
-            
+
             return valid_results
-            
+
         except asyncio.CancelledError:
             logger.info(f"Worker {worker_id}: Page {page_num} cancelled")
             return []
+
         except Exception as e:
             logger.error(f"Worker {worker_id}: Error scraping page {page_num}: {e}")
             return []
-        finally:
-            await context.close()
-    
-    async def _scrape_single_product_async(self, browser, product_url: str, worker_id: int) -> Optional[Dict[str, Any]]:
-        """Scrape a single product asynchronously with stop support"""
-        
+
+
+    async def _scrape_single_product_async(self, page, product_url: str, worker_id: int):
+        """Scrape a single product asynchronously with stop support and reduced page reloads."""
+
         if self._stop_requested:
             return None
-        
+
         await self._rate_limit()
-        context = await browser.new_context()
-        
+
+        for attempt in range(3):
+            if self._stop_requested:
+                return None
+
+            try:
+                await page.goto(product_url, wait_until='domcontentloaded', timeout=15000)
+                break  
+            except Exception as e:
+                if attempt == 2:
+                    logger.error(f"Worker {worker_id}: Failed to load {product_url}: {e}")
+                    return None
+                await asyncio.sleep(1 * (attempt + 1))
+        else:
+            return None
+
+        if self._stop_requested:
+            return None
+
         try:
-            page = await context.new_page()
-            
-            if self._stop_requested:
-                return None
-            
-            for attempt in range(3):
-                try:
-                    if self._stop_requested:
-                        return None
-                    
-                    await page.goto(product_url, wait_until='domcontentloaded', timeout=15000)
-                    break
-                except Exception as e:
-                    if attempt == 2:
-                        logger.error(f"Worker {worker_id}: Failed to load {product_url}: {e}")
-                        return None
-                    if self._stop_requested:
-                        return None
-                    await asyncio.sleep(1 * (attempt + 1))
-            
-            if self._stop_requested:
-                return None
-            
             product_data = await self._extract_product_data_async(page, product_url)
-            
-            if self._stop_requested:
+            if self.update_gui_callback:
+                self.update_gui_callback({'type': 'product', 'data': product_data})
+
+            if self._stop_requested or not product_data:
                 return None
-            
-            if product_data and self._should_include_product(product_data):
+
+            if product_data:
                 self._update_gui({"type": "product", 'data': product_data})
                 return product_data
-            
+
             return None
-            
+
         except asyncio.CancelledError:
             logger.debug(f"Worker {worker_id}: Product scraping cancelled for {product_url}")
             return None
         except Exception as e:
             logger.error(f"Worker {worker_id}: Error scraping {product_url}: {e}")
             return None
-        finally:
-            await context.close()
+
     
     async def _extract_product_links_async(self, page, page_url: str) -> List[str]:
         """Async version of product link extraction"""

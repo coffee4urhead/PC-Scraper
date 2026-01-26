@@ -17,6 +17,8 @@ class ContentSetup:
                               'Xtreme.bg', 'Optimal Computers', 'Plasico.bg', 
                               'PIC.bg', 'jarcomputers.com', 'Desktop.bg', 
                               'Amazon.com', 'Amazon.de']
+        self.selected = []
+        
     def _add_action_buttons(self):
         """Add action buttons to the left panel"""
         def resource_path(relative_path): 
@@ -266,7 +268,9 @@ class ContentSetup:
         )
         self.master.left_part_select.set("GPU")
         self.master.left_part_select.place(relx=0.6, rely=0.02)
-        
+
+        # here we create the multi-choice component based on the website values we can choose from
+
         self.master.left_website_select = ctk.CTkComboBox(
             self.master.left_panel,
             width=170,  

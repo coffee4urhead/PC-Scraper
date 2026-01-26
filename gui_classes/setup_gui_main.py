@@ -94,7 +94,7 @@ class SetupGUI:
         
         print("GUI setup complete")
     
-    
+    # made some mods here... (to be tested)
     def on_selection_instantiate(self, selected_website):
         """Handle website selection and scraper instantiation"""
         if hasattr(self.master, 'left_website_select'):
@@ -102,10 +102,31 @@ class SetupGUI:
 
         scraper = self.scraper_manager.instantiate_scraper(selected_website)
 
-        self.master.scraper = scraper
+        if selected_website in self.master.selected_websites:
+            self.master.update_gui({
+                'type': 'status',
+                'message': f"⚠️ {selected_website} is already selected"
+            })
+            return None
         
+        if len(self.master.selected_websites) >= self.master.website_selection_limit:
+            self.master.update_gui({
+                'type': 'error',
+                'message': f"❌ Worker limit reached! You can only select {self.master.website_selection_limit} website(s) at once (based on your CPU)."
+            })
+            return None
+        
+        if selected_website not in self.master.selected_websites:
+            self.master.selected_websites.append(selected_website)
+            print(f"Added {selected_website} to selected websites")
+            self.master.scraper_list.append(scraper)
+            remaining = abs(self.master.website_selection_limit - len(self.master.selected_websites))
+            self.master.update_gui({
+                'type': 'status',
+                'message': f"✅ {selected_website} selected ({len(self.master.selected_websites)}/{self.master.website_selection_limit}). {remaining} more website(s) can be selected."
+            })
         return scraper
-    
+
     def get_current_scraper(self):
         """Get the current active scraper"""
         return self.scraper_manager.get_current_scraper()
