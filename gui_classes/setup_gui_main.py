@@ -4,6 +4,7 @@ from .setup_gui_panels import PanelSetup
 from .setup_gui_content import ContentSetup
 from .setup_gui_settings import SettingsTabSetup
 from .gui_state_manager import GUIStateManager
+from scrapers.scraper_container_class import ScraperContainer
 from .scraper_manager import ScraperManager
 from settings_manager import SettingsManager
 import os
@@ -108,18 +109,25 @@ class SetupGUI:
                 'message': f"⚠️ {selected_website} is already selected"
             })
             return None
-        
+    
         if len(self.master.selected_websites) >= self.master.website_selection_limit:
             self.master.update_gui({
                 'type': 'error',
                 'message': f"❌ Worker limit reached! You can only select {self.master.website_selection_limit} website(s) at once (based on your CPU)."
             })
             return None
-        
+    
         if selected_website not in self.master.selected_websites:
             self.master.selected_websites.append(selected_website)
             print(f"Added {selected_website} to selected websites")
             self.master.scraper_list.append(scraper)
+        
+            # Update the scraper container
+            if not self.master.scraper_container:
+                self.master.scraper_container = ScraperContainer(self.master.scraper_list)
+            else:
+                self.master.scraper_container.scraper_list = self.master.scraper_list
+        
             remaining = abs(self.master.website_selection_limit - len(self.master.selected_websites))
             self.master.update_gui({
                 'type': 'status',

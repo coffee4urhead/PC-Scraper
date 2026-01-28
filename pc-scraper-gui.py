@@ -1,3 +1,4 @@
+import asyncio
 import customtkinter as ctk
 from tkinter import filedialog
 from dotenv import load_dotenv
@@ -9,6 +10,7 @@ import sys
 from settings_manager import SettingsManager
 from FileCreators.TableMaker import TableMaker as tm
 from scrapers.cpu_memory_manager import CPUMemoryManagerClass
+from scrapers.scraper_container_class import ScraperContainer
 from FileCreators import JSON_creator as jsc
 from FileCreators import CSV_creator as cs
 from windows.scraper_options_window import ScraperOptionsWindow
@@ -122,6 +124,7 @@ class GUI(ctk.CTk):
         self.selected_website = "Desktop.bg"
         self.scraper = DesktopScraper('BGN', self.update_gui)
         self.scraper_list = []
+        self.scraper_container = None 
         self.cpu_manager = CPUMemoryManagerClass()
         self.website_selection_limit = self.cpu_manager.get_optimal_worker_count()
         self.selected_websites = []
@@ -196,9 +199,36 @@ class GUI(ctk.CTk):
         self.left_website_select.configure(state='disabled')
         self._start_scraping()
 
+    def _apply_filters_to_scrapers(self):
+        """Apply filter settings to all scrapers"""
+        min_price = None
+        max_price = None
+        exclude_keywords = ""
+    
+        if hasattr(self, 'min_price_entry') and self.min_price_entry:
+            min_price_val = self.min_price_entry.get().strip()
+            min_price = float(min_price_val) if min_price_val else None
+        
+        if hasattr(self, 'max_price_entry') and self.max_price_entry:
+            max_price_val = self.max_price_entry.get().strip()
+            max_price = float(max_price_val) if max_price_val else None
+        
+        if hasattr(self, 'exclude_keywords_entry') and self.exclude_keywords_entry:
+            exclude_keywords = self.exclude_keywords_entry.get().strip()
+    
+        for scraper in self.scraper_list:
+            scraper.min_price = min_price
+            scraper.max_price = max_price
+            scraper.exclude_keywords = exclude_keywords
+
     def _start_scraping(self):
         search_term = self.left_entry.get().strip()
-        if search_term:
+    
+        # Create the scraper container with the current scraper list
+        if not self.scraper_container or self.scraper_container.scraper_list != self.scraper_list:
+            self.scraper_container = ScraperContainer(self.scraper_list)
+    
+        if search_term and self.scraper_list:
             self.right_console.delete(1.0, 'end')
             self.reconfigure_back_property(self.left_scrape_button, True)
             self.reconfigure_back_property(self.left_entry, True)
@@ -207,13 +237,106 @@ class GUI(ctk.CTk):
             self.progress_bar['value'] = 0
             self.status_label.configure(text="Starting scrape...")
             self.all_products.clear()
+    
+            self._apply_filters_to_scrapers()
         
             threading.Thread(
-                target=self._run_async_scraper,
+                target=self._run_scrapers_with_container,
                 args=(search_term,),
                 daemon=True
             ).start()
+        elif not self.scraper_list:
+            self.update_gui({
+                'type': 'error',
+                'message': 'Please select at least one website before scraping.'
+            })
+        else:
+            self.update_gui({
+                'type': 'error',
+                'message': 'Please enter a search term.'
+            })
 
+    def _run_scrapers_with_container(self, search_term):
+        """Run all scrapers concurrently using ScraperContainer"""
+    
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        
+            self.after(0, lambda: self.update_gui({
+                'type': 'status',
+                'message': f'Starting {len(self.scraper_list)} scrapers...'
+            }))
+        
+            all_results = loop.run_until_complete(
+                self.scraper_container.start_all_scrapers_async(search_term, max_pages=3)
+            )
+        
+            self.after(0, lambda: self._process_container_results(all_results))
+        
+        except Exception as e:
+            error_msg = f"Scraping error: {str(e)}\n{traceback.format_exc()}"
+            print(error_msg)
+            self.after(0, lambda: self._handle_scraping_error(error_msg))
+        finally:
+            if loop and not loop.is_closed():
+                loop.close()
+
+    def _process_container_results(self, all_results):
+        """Process results from ScraperContainer"""
+        try:
+            if self.scraper_container and all_results:
+                deduplicated_results = self.scraper_container.deduplicate_results(all_results)
+            else:
+                deduplicated_results = all_results or []
+        
+            self.all_products = deduplicated_results
+        
+            self.right_console.delete(1.0, 'end')
+        
+            if deduplicated_results:
+                self.right_console.insert('end', f"✅ Scraping Complete!\n")
+                self.right_console.insert('end', f"📊 Found {len(deduplicated_results)} unique products from {len(self.scraper_list)} sources\n\n")
+            
+                for i, product in enumerate(deduplicated_results[:5], 1):
+                    title = product.get('title', 'N/A')[:50]
+                    price = product.get('price', 'N/A')
+                    source = product.get('source', 'Unknown')
+                    self.right_console.insert('end', f"{i}. {title} - {price} ({source})\n")
+            
+                if len(deduplicated_results) > 5:
+                    self.right_console.insert('end', f"... and {len(deduplicated_results) - 5} more products\n")
+
+                self._convert_prices_and_create_excel()
+            else:
+                self.right_console.insert('end', "❌ No products found matching your criteria.\n")
+                self.status_label.configure(text="No products found", text_color="orange")
+            
+                self.reconfigure_back_property(self.left_scrape_button, False)
+                self.reconfigure_back_property(self.left_entry, False)
+                self.reconfigure_back_property(self.left_website_select, False)
+                self.reconfigure_back_property(self.left_part_select, False)
+                self.progress_bar.set(0)
+            
+        except Exception as e:
+            error_msg = f"Error processing results: {str(e)}"
+            print(error_msg)
+            self.after(0, lambda: self._handle_scraping_error(error_msg))
+
+    def _handle_scraping_error(self, error_message):
+        """Handle scraping errors on the main thread"""
+        self.status_label.configure(
+            text=f"Error: {error_message[:50]}...", 
+            text_color="red"
+        )
+        self.right_console.insert('end', f"❌ ERROR: {error_message}\n\n")
+        self.progress_bar.set(0)
+    
+        self.reconfigure_back_property(self.left_scrape_button, False)
+        self.reconfigure_back_property(self.left_entry, False)
+        self.reconfigure_back_property(self.left_website_select, False)
+        self.reconfigure_back_property(self.left_part_select, False)
+    
     def _run_async_scraper(self, search_term):
         """Run the async scraper in a background thread"""
         import asyncio
@@ -222,10 +345,11 @@ class GUI(ctk.CTk):
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
 
-            loop.run_until_complete(
-                self.scraper.start_scraping_async(search_term)
-            )
-        
+            for single_web_scraper in self.scraper_list:
+                loop.run_until_complete(
+                    single_web_scraper.start_scraping_async(search_term)
+                )
+
         except Exception as e:
             error_msg = f"Scraping error: {str(e)}"
             print(error_msg)
@@ -311,83 +435,79 @@ class GUI(ctk.CTk):
         self.after(0, self._process_scraper_update, data)
 
     def _process_scraper_update(self, data):
-        """Tkinter callback - must be synchronous (remove async)"""
+        """Process scraper updates - enhanced to handle multiple scrapers"""
         try:
             if isinstance(data, str):
                 self.right_console.insert('end', f"{data}\n")
                 self.right_console.see('end')
                 return
-        
+    
             if not isinstance(data, dict):
                 self.right_console.insert('end', f"Unexpected data type: {type(data)} - {str(data)[:100]}...\n")
                 self.right_console.see('end')
                 return
-        
+    
             data_type = data.get('type', 'unknown')
-        
+            scraper_name = data.get('scraper_name', 'Unknown')
+            scraper_id = data.get('scraper_id', '')
+    
             if data_type == 'progress':
                 progress_value = data.get('value', 0)
-                self.progress_bar.set(progress_value / 100)
+                if hasattr(self, 'scraper_container') and self.scraper_container:
+                    status = self.scraper_container.get_scraper_status()
+                    if status:
+                        total_progress = sum(info.get('progress', 0) for info in status.values())
+                        avg_progress = total_progress / len(status)
+                        self.progress_bar.set(avg_progress / 100)
+            
                 self.status_label.configure(
-                    text=f"Scraping... {progress_value}% complete",
+                    text=f"{scraper_name}: {progress_value}% complete",
                     text_color="blue"
                 )
 
             elif data_type == 'product':
                 product = data.get('data', {})
-                print(f"DEBUG update_gui called with: {type(data)}")
-                print(product)
-
                 if product:
                     self.all_products.append(product)
 
                     display_text = (
-                        f"Product Found:\n"
-                        f"• Title: {product.get('title', 'N/A')}\n"
-                        f"• Price: {product.get('price', 'N/A')}\n"
-                        f"• URL: {product.get('url', 'N/A')}\n"
-                        f"• Source: {product.get('source', 'N/A')}\n"
-                        f"• Page: {product.get('page', 'N/A')}\n"
-                        f"{'-' * 50}\n"
+                    f"✅ {scraper_name} Found:\n"
+                    f"• Title: {product.get('title', 'N/A')[:80]}\n"
+                    f"• Price: {product.get('price', 'N/A')}\n"
+                    f"• URL: {product.get('url', 'N/A')[:100]}...\n"
+                    f"{'-' * 50}\n"
                     )
                     self.right_console.insert('end', display_text)
                     self.right_console.see('end')
 
             elif data_type == 'error':
                 error_message = data.get('message', 'Unknown error')
-                self.right_console.insert('end', f"ERROR: {error_message}\n\n")
-                self.status_label.configure(text=f"Error: {error_message}", text_color="red")
-                self.progress_bar.set(0)
+                self.right_console.insert('end', f"❌ {scraper_name} Error: {error_message}\n\n")
+                self.status_label.configure(text=f"{scraper_name} Error", text_color="red")
 
             elif data_type == 'complete':
-                self.status_label.configure(text="Processing results...", text_color="orange")
-            
-                for widget_name in ['left_scrape_button', 'left_entry', 'left_website_select', 'left_part_select']:
-                    if hasattr(self, widget_name):
-                        widget = getattr(self, widget_name)
-                        self.reconfigure_back_property(widget, True)
-
-                threading.Thread(
-                    target=self._convert_prices_and_create_excel,
-                    daemon=True
-                ).start()
+                self.right_console.insert('end', f"✅ {scraper_name} completed scraping\n")
+                self.right_console.see('end')
 
             elif data_type == 'status':
                 status_message = data.get('message', '')
                 if status_message:
-                    self.right_console.insert('end', f"STATUS: {status_message}\n")
+                    self.right_console.insert('end', f"ℹ️ {scraper_name}: {status_message}\n")
                     self.right_console.see('end')
-                    self.status_label.configure(text=status_message, text_color="blue")
+
+            elif data_type == 'start':
+                status_message = data.get('message', 'Starting...')
+                self.right_console.insert('end', f"🚀 {scraper_name}: {status_message}\n")
+                self.right_console.see('end')
 
             else:
-                self.right_console.insert('end', f"DEBUG: Unknown data type '{data_type}': {str(data)[:200]}...\n")
+                self.right_console.insert('end', f"DEBUG: Unknown data type '{data_type}' from {scraper_name}\n")
                 self.right_console.see('end')
 
         except Exception as e:
             error_msg = f"GUI Update Error: {str(e)}\n"
             self.right_console.insert('end', error_msg)
             self.right_console.see('end')
-            self.status_label.configure(text=f"Update Error: {str(e)[:50]}", text_color="red")
             print(f"GUI Error: {e}\nData received: {data}")
 
     def _convert_prices_and_create_excel(self):
@@ -632,8 +752,16 @@ class GUI(ctk.CTk):
 
     def on_closing(self):
         print("Closing application...")
-        if self.scraper:
-            print("Stopping scraper...")
+    
+        if self.scraper_container:
+            print("Stopping all scrapers...")
+            try:
+                stopped_count = self.scraper_container.stop_all_scrapers()
+                print(f"Stopped {stopped_count} scrapers")
+            except Exception as e:
+                print(f"Error stopping scrapers: {e}")
+        elif self.scraper:
+            print("Stopping single scraper...")
             try:
                 self.scraper.stop_scraping()
             except Exception as e:
@@ -646,7 +774,6 @@ class GUI(ctk.CTk):
                 print(f"Error destroying {widget}: {e}")
 
         self.quit() 
-
 
 if __name__ == "__main__":
     app = GUI()

@@ -80,22 +80,15 @@ class AsyncPlaywrightBaseScraper(ABC):
         return random.choice(self.user_agents)
     
     def stop_scraping(self):
-        """Stop the scraping process"""
-        logger.info("Stop requested")
-        self._stop_requested = True
-        self._stop_event.set()
-        
-        for task in self._active_tasks:
-            if not task.done() and not getattr(task, '_shielded', False):
-                task.cancel()
-        
-        self._update_gui({
-            'type': 'status', 
-            'message': 'Scraping stopped by user'
-        })
-        
-        self._running = False
-        return True
+        """Stop all running scrapers"""
+        if self.scraper_container:
+            stopped_count = self.scraper_container.stop_all_scrapers()
+            self.update_gui({
+                'type': 'status',
+                'message': f'Stopped {stopped_count} scrapers'
+            })
+            return stopped_count
+        return 0
     
     def is_running(self):
         """Check if scraping is running"""
@@ -145,7 +138,7 @@ class AsyncPlaywrightBaseScraper(ABC):
         worker_tasks = []
         
         # Here we will invoke scrapers to one one workeer based on the PC!!
-
+    
         for worker_id in range(1):
             start_page = worker_id * pages_per_worker + 1
             end_page = min((worker_id + 1) * pages_per_worker, max_pages)
