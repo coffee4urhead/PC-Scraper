@@ -224,7 +224,6 @@ class GUI(ctk.CTk):
     def _start_scraping(self):
         search_term = self.left_entry.get().strip()
     
-        # Create the scraper container with the current scraper list
         if not self.scraper_container or self.scraper_container.scraper_list != self.scraper_list:
             self.scraper_container = ScraperContainer(self.scraper_list)
     
@@ -278,9 +277,6 @@ class GUI(ctk.CTk):
             error_msg = f"Scraping error: {str(e)}\n{traceback.format_exc()}"
             print(error_msg)
             self.after(0, lambda: self._handle_scraping_error(error_msg))
-        finally:
-            if loop and not loop.is_closed():
-                loop.close()
 
     def _process_container_results(self, all_results):
         """Process results from ScraperContainer"""

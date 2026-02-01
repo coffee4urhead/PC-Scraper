@@ -13,8 +13,6 @@ import threading
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# we need to fix the doubling of the results in the file
-
 class AsyncPlaywrightBaseScraper(ABC):
     """Async version of the base scraper for massive performance gains"""
     
@@ -54,6 +52,60 @@ class AsyncPlaywrightBaseScraper(ABC):
         self._stop_requested = False
         self._active_tasks = []
         self._running = False
+
+        self._processed_urls = set()
+
+    async def _retry_operation(self, operation, operation_name, max_retries=3, initial_delay=2):
+        """Generic retry decorator for any async operation"""
+        for attempt in range(max_retries):
+            try:
+                result = await operation(attempt)
+                if result is not None:  
+                    return result
+                
+                if attempt < max_retries - 1:
+                    delay = initial_delay * (attempt + 1)
+                    print(f"DEBUG: {operation_name} returned None, retrying in {delay}s...")
+                    await asyncio.sleep(delay)
+                    continue
+                    
+            except Exception as e:
+                print(f"DEBUG: {operation_name} attempt {attempt + 1} failed: {e}")
+                
+                if attempt < max_retries - 1:  
+                    delay = initial_delay * (attempt + 1)
+                    print(f"DEBUG: Retrying {operation_name} in {delay}s...")
+                    await asyncio.sleep(delay)
+                else:
+                    print(f"DEBUG: All attempts failed for {operation_name}")
+                    import traceback
+                    traceback.print_exc()
+        
+        return None  
+    
+    async def _navigate_with_retry(self, page, url: str, attempt: int) -> bool:
+        """Navigate to URL with retry logic"""
+        await page.mouse.wheel(0, random.randint(400, 900))
+        await asyncio.sleep(random.uniform(0.5, 1.5))
+        
+        wait_strategies = ['domcontentloaded', 'load', 'networkidle']
+        wait_strategy = wait_strategies[min(attempt, len(wait_strategies)-1)]
+        
+        await page.goto(url, wait_until=wait_strategy, timeout=30000)
+        print(f"DEBUG: Page loaded successfully: {url} (wait_until: {wait_strategy})")
+        return True
+    
+    async def _wait_for_selector_with_fallback(self, page, selectors: List[str], timeout: int = 10000) -> Optional[str]:
+        """Wait for any of the given selectors with fallback options"""
+        for selector in selectors:
+            try:
+                await page.wait_for_selector(selector, timeout=timeout)
+                print(f"DEBUG: Found selector: {selector}")
+                return selector
+            except Exception:
+                continue
+        return None
+    
     async def _rate_limit(self):
         """Rate limiting to avoid detection"""
         now = time.time()
@@ -136,8 +188,6 @@ class AsyncPlaywrightBaseScraper(ABC):
         
         pages_per_worker = 2
         worker_tasks = []
-        
-        # Here we will invoke scrapers to one one workeer based on the PC!!
     
         for worker_id in range(1):
             start_page = worker_id * pages_per_worker + 1
@@ -180,8 +230,6 @@ class AsyncPlaywrightBaseScraper(ABC):
     
     async def _worker_scrape(self, search_term: str, start_page: int, end_page: int, worker_id: int) -> List[Dict[str, Any]]:
         """Single worker scraping a range of pages with stop support"""
-        browser = None
-        context = None
         results = []
 
         if self._stop_requested:
@@ -190,68 +238,44 @@ class AsyncPlaywrightBaseScraper(ABC):
 
         self.cpu_manager.set_worker_affinity(worker_id)
     
-        browser = None
-        results = []
-        
         try:
-            async with async_playwright() as p:
-                browser = await asyncio.shield(p.chromium.launch(
-                    headless=False,
-                    args=[
-                        '--start-maximized',
-                        '--disable-blink-features=AutomationControlled',
-                    ]
+            if not hasattr(self, 'context') or not self.context:
+                logger.error(f"Worker {worker_id}: No context available")
+                return []
+        
+            context = self.context
+        
+            for page_num in range(start_page, end_page + 1):
+                if self._stop_requested or self._stop_event.is_set():
+                    logger.info(f"Worker {worker_id}: Stop requested at page {page_num}")
+                    break
+            
+                page_results = await asyncio.shield(self._scrape_single_page_async(
+                    context, search_term, page_num, worker_id
                 ))
-                viewports = [
-                    {'width': 1920, 'height': 1080},
-                    {'width': 1366, 'height': 768},
-                    {'width': 1536, 'height': 864},
-                    {'width': 1440, 'height': 900}
-                ]
-
-                user_agent = await self._get_random_user_agent()
-
-                context = await browser.new_context(
-                    user_agent=user_agent,
-                    viewport=random.choice(viewports),
-                    locale='bg-BG',
-                    timezone_id='Europe/Sofia',
-                    color_scheme='light',
-                    reduced_motion='no-preference',
-                    java_script_enabled=True,
-                )   
-
-                for page_num in range(start_page, end_page + 1):
-                    if self._stop_requested or self._stop_event.is_set():
-                        logger.info(f"Worker {worker_id}: Stop requested at page {page_num}")
-                        break
-                    
-                    page_results = await asyncio.shield(self._scrape_single_page_async(
-                        context, search_term, page_num, worker_id
-                    ))
-                    results.extend(page_results)
-                    
-                    if self._stop_requested:
-                        break
-                    
-                    if not self._stop_requested:
-                        self.completed_tasks += 1
-                        if self.total_tasks > 0:
-                            progress = int((self.completed_tasks / self.total_tasks) * 100)
-                            if progress > self.current_progress:
-                                self.current_progress = progress
-                                self._update_gui({'type': 'progress', 'value': progress})
-                    
-                    if not self._stop_requested:
-                        try:
-                            await asyncio.wait_for(
-                                asyncio.sleep(self.delay_between_requests * random.uniform(0.8, 1.2)),
-                                timeout=5.0
-                            )
-                        except asyncio.TimeoutError:
-                            pass  
-                
-                return results
+                results.extend(page_results)
+            
+                if self._stop_requested:
+                    break
+            
+                if not self._stop_requested:
+                    self.completed_tasks += 1
+                    if self.total_tasks > 0:
+                        progress = int((self.completed_tasks / self.total_tasks) * 100)
+                        if progress > self.current_progress:
+                            self.current_progress = progress
+                            self._update_gui({'type': 'progress', 'value': progress})
+            
+                if not self._stop_requested:
+                    try:
+                        await asyncio.wait_for(
+                            asyncio.sleep(self.delay_between_requests * random.uniform(0.8, 1.2)),
+                            timeout=5.0
+                        )
+                    except asyncio.TimeoutError:
+                        pass  
+        
+            return results
 
         except asyncio.CancelledError:
             logger.info(f"Worker {worker_id} cancelled")
@@ -259,14 +283,6 @@ class AsyncPlaywrightBaseScraper(ABC):
         except Exception as e:
             logger.error(f"Worker {worker_id} failed: {e}")
             return results
-        finally:
-            try:
-                if context:
-                    await asyncio.shield(context.close())
-                if browser:
-                    await asyncio.shield(browser.close())
-            except:
-                pass
 
     async def _scrape_single_page_async(self, context, search_term: str, page_num: int, worker_id: int) -> List[Dict[str, Any]]:
         self._update_gui({"type": "progress", 'data': page_num})
