@@ -91,7 +91,6 @@ class SetupGUI:
         self.setup_info_tab(self.master.info_tab)
         self.setup_price_history_tab(self.master.price_history_changes_tab)
         
-        self.on_selection_instantiate('Desktop.bg')
         
         print("GUI setup complete")
     

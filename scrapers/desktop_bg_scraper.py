@@ -15,6 +15,7 @@ class DesktopScraper(AsyncPlaywrightBaseScraper):
         ]
         self.update_gui_callback = update_gui_callback
         self.current_page = 1
+        self.website_that_is_scraped = "Desktop.bg"
 
     def _get_base_url(self, search_term):
         """Generate clean search URL without restrictive parameters"""

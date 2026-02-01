@@ -1,8 +1,9 @@
 from .base_scraper import AsyncPlaywrightBaseScraper
 import asyncio
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import logging
 import random
+from collections import defaultdict
 from playwright.async_api import async_playwright, Browser, BrowserContext
 
 logger = logging.getLogger(__name__)
@@ -11,10 +12,11 @@ class ScraperContainer:
     def __init__(self, scraper_list: List[AsyncPlaywrightBaseScraper]):
         self.scraper_list = scraper_list
         self._active_scrapers = {}
-        self._all_results = []
+        self._all_results = {}  
         self.browser = None
         self._playwright = None  
         self._contexts = {}
+        self.context = None 
 
     async def start_shared_browser(self):
         """Start shared browser instances for all scrapers"""
@@ -30,6 +32,7 @@ class ScraperContainer:
                 ]
             ))
 
+            self.context = await self.browser.new_context()
             logger.info("Shared browser and context started successfully.")
         except Exception as e:
             logger.error(f"Error starting shared browser: {e}")
@@ -57,24 +60,29 @@ class ScraperContainer:
         )
         
         self._contexts[id(scraper)] = context
-
         return context
-    async def start_all_scrapers_async(self, search_term: str, max_pages: int = 3) -> List[Dict[str, Any]]:
+    
+    async def start_all_scrapers_async(self, search_term: str, max_pages: int = 3) -> Dict[str, List[Dict[str, Any]]]:
         """
         Start all scrapers concurrently using asyncio.
-        Each scraper runs its own async start_scraping_async method.
+        Returns: Dictionary with website names as keys and lists of products as values.
         """
-        self._all_results = []
-        
-        if not self.browser or not self.context:
+        if not self.browser:
             await self.start_shared_browser()
         
+        self._all_results = {}
         scraper_tasks = []
 
         for scraper in self.scraper_list:
             context = await self._create_scraper_context(scraper)
             scraper.browser = self.browser
             scraper.context = context
+            
+            if hasattr(scraper, 'website_that_is_scraped'):
+                website_key = scraper.website_that_is_scraped
+            else:
+                website_key = scraper.__class__.__name__
+            self._all_results[website_key] = []
             
             task = asyncio.create_task(
                 self._run_single_scraper(scraper, search_term, max_pages)
@@ -91,17 +99,31 @@ class ScraperContainer:
             
             for i, result in enumerate(results):
                 scraper = self.scraper_list[i]
+                
+                if hasattr(scraper, 'website_that_is_scraped'):
+                    website_key = scraper.website_that_is_scraped
+                else:
+                    website_key = scraper.__class__.__name__
+                
                 if isinstance(result, Exception):
                     logger.error(f"Scraper {scraper.__class__.__name__} failed: {result}")
+                    self._all_results[website_key] = []
                 elif result:
                     for product in result:
                         if product:
                             product['source_scraper'] = scraper.__class__.__name__
                             if hasattr(scraper, 'website_currency'):
                                 product['source_currency'] = scraper.website_currency
-                    self._all_results.extend(result)
+                    self._all_results[website_key] = result
+                else:
+                    self._all_results[website_key] = []
             
-            logger.info(f"All scrapers completed. Total products: {len(self._all_results)}")
+            total_products = sum(len(products) for products in self._all_results.values())
+            logger.info(f"All scrapers completed. Total products: {total_products}")
+            
+            for website, products in self._all_results.items():
+                logger.info(f"  - {website}: {len(products)} products")
+            
             return self._all_results
             
         except Exception as e:
@@ -123,6 +145,8 @@ class ScraperContainer:
     async def _cleanup_resources(self):
         """Clean up browser resources"""
         try:
+            await self._cleanup_contexts()
+            
             if self.context:
                 await self.context.close()
                 self.context = None
@@ -166,9 +190,10 @@ class ScraperContainer:
         Run a single scraper with proper error handling.
         """
         try:
-            logger.info(f"Starting scraper: {scraper.__class__.__name__}")
+            scraper_name = scraper.__class__.__name__
+            logger.info(f"Starting scraper: {scraper_name}")
             results = await scraper.start_scraping_async(search_term, max_pages)
-            logger.info(f"Scraper {scraper.__class__.__name__} completed: {len(results)} products")
+            logger.info(f"Scraper {scraper_name} completed: {len(results)} products")
             return results
         except asyncio.CancelledError:
             logger.info(f"Scraper {scraper.__class__.__name__} was cancelled")
@@ -190,7 +215,7 @@ class ScraperContainer:
             scraper = scraper_info['scraper']
             task = scraper_info['task']
             
-            if scraper.is_running():
+            if hasattr(scraper, 'is_running') and scraper.is_running():
                 scraper.stop_scraping()
                 stopped_count += 1
             
@@ -200,15 +225,24 @@ class ScraperContainer:
         logger.info(f"Stopped {stopped_count} scrapers")
         return stopped_count
         
-    def get_scraper_status(self):
+    def get_scraper_status(self) -> Dict[str, Dict[str, Any]]:
         """Get status of all scrapers"""
         status = {}
         for scraper in self.scraper_list:
-            status[scraper.__class__.__name__] = {
-                'running': scraper.is_running(),
-                'progress': scraper.current_progress,
-                'completed_tasks': scraper.completed_tasks,
-                'total_tasks': scraper.total_tasks
+            scraper_name = scraper.__class__.__name__
+            
+            if hasattr(scraper, 'website_that_is_scraped'):
+                website_key = scraper.website_that_is_scraped
+            else:
+                website_key = scraper_name
+            
+            status[scraper_name] = {
+                'running': scraper.is_running() if hasattr(scraper, 'is_running') else False,
+                'progress': getattr(scraper, 'current_progress', 0),
+                'completed_tasks': getattr(scraper, 'completed_tasks', 0),
+                'total_tasks': getattr(scraper, 'total_tasks', 0),
+                'website': website_key,
+                'products_collected': len(self._all_results.get(website_key, []))
             }
         return status
         
@@ -219,27 +253,139 @@ class ScraperContainer:
             scraper.max_price = max_price
             scraper.exclude_keywords = exclude_keywords
         logger.info(f"Filters applied to {len(self.scraper_list)} scrapers")
-        
-    def deduplicate_results(self, results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    
+    def get_all_results_flat(self) -> List[Dict[str, Any]]:
         """
-        Deduplicate results from all scrapers by URL.
-        If same product found by multiple scrapers, keep the first one.
+        Get all results as a flat list (backward compatibility).
         """
-        seen_urls = set()
-        deduplicated = []
+        flat_results = []
+        for website, products in self._all_results.items():
+            flat_results.extend(products)
+        return flat_results
+    
+    def get_results_by_website(self, website_name: str) -> List[Dict[str, Any]]:
+        """Get results for a specific website"""
+        return self._all_results.get(website_name, [])
+    
+    def get_results_summary(self) -> Dict[str, Any]:
+        """Get summary of all results"""
+        summary = {
+            'total_products': 0,
+            'by_website': {},
+            'by_currency': defaultdict(int),
+            'by_scraper': {}
+        }
         
-        for product in results:
-            if product and 'url' in product:
-                if product['url'] not in seen_urls:
-                    seen_urls.add(product['url'])
-                    deduplicated.append(product)
+        for website, products in self._all_results.items():
+            product_count = len(products)
+            summary['by_website'][website] = product_count
+            summary['total_products'] += product_count
+            
+            for product in products:
+                currency = product.get('currency') or product.get('source_currency')
+                scraper = product.get('source_scraper')
+                
+                if currency:
+                    summary['by_currency'][currency] += 1
+                if scraper:
+                    summary['by_scraper'][scraper] = summary['by_scraper'].get(scraper, 0) + 1
         
-        logger.info(f"Deduplicated {len(results)} -> {len(deduplicated)} products")
-        return deduplicated
+        return summary
+    
+    def deduplicate_results(self, results: List[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+        """
+        Deduplicate results by URL.
+        If no results parameter is provided, deduplicate internal _all_results.
+        """
+        if results is not None:
+            seen_urls = set()
+            deduplicated = []
+            
+            for product in results:
+                if product and 'url' in product:
+                    if product['url'] not in seen_urls:
+                        seen_urls.add(product['url'])
+                        deduplicated.append(product)
+            
+            logger.info(f"Deduplicated {len(results)} -> {len(deduplicated)} products")
+            return deduplicated
+        else:
+            flat_results = self.get_all_results_flat()
+            seen_urls = set()
+            deduplicated = []
+            
+            for product in flat_results:
+                if product and 'url' in product:
+                    if product['url'] not in seen_urls:
+                        seen_urls.add(product['url'])
+                        deduplicated.append(product)
+            
+            logger.info(f"Deduplicated {len(flat_results)} -> {len(deduplicated)} products")
+            return deduplicated
+    
+    def deduplicate_results(self, results: List[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+        """
+        Deduplicate results by URL.
+        If results parameter is provided, deduplicate that list.
+        If no parameter, deduplicate internal _all_results.
+        """
+        try:
+            if results is not None:
+                if isinstance(results, list):
+                    seen_urls = set()
+                    deduplicated = []
+                
+                    for product in results:
+                        if product and isinstance(product, dict) and 'url' in product:
+                            url = product['url']
+                            if url and url not in seen_urls:
+                                seen_urls.add(url)
+                                deduplicated.append(product)
+                
+                    logger.info(f"Deduplicated list: {len(results)} -> {len(deduplicated)} products")
+                    return deduplicated
+                else:
+                    logger.warning(f"deduplicate_results received non-list: {type(results)}")
+                    return []
+
+            flat_results = self.get_all_results_flat()
+            seen_urls = set()
+            deduplicated = []
         
-    def get_scraper_by_name(self, scraper_name: str) -> AsyncPlaywrightBaseScraper:
+            for product in flat_results:
+                if product and isinstance(product, dict) and 'url' in product:
+                    url = product['url']
+                    if url and url not in seen_urls:
+                        seen_urls.add(url)
+                        deduplicated.append(product)
+        
+            logger.info(f"Deduplicated internal: {len(flat_results)} -> {len(deduplicated)} products")
+            return deduplicated
+        
+        except Exception as e:
+            logger.error(f"Error in deduplicate_results: {e}")
+            return []
+    
+    def get_scraper_by_name(self, scraper_name: str) -> Optional[AsyncPlaywrightBaseScraper]:
         """Get a scraper instance by its class name"""
         for scraper in self.scraper_list:
             if scraper.__class__.__name__ == scraper_name:
                 return scraper
         return None
+    
+    def get_scraper_by_website(self, website_name: str) -> Optional[AsyncPlaywrightBaseScraper]:
+        """Get a scraper instance by website name"""
+        for scraper in self.scraper_list:
+            if hasattr(scraper, 'website_that_is_scraped') and scraper.website_that_is_scraped == website_name:
+                return scraper
+            elif scraper.__class__.__name__.lower() in website_name.lower():
+                return scraper
+        return None
+    
+    def get_results_count(self) -> int:
+        """Get total number of products across all scrapers"""
+        return sum(len(products) for products in self._all_results.values())
+    
+    def clear_results(self):
+        """Clear all stored results"""
+        self._all_results = {}

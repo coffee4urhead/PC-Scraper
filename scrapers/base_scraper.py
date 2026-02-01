@@ -426,11 +426,21 @@ class AsyncPlaywrightBaseScraper(ABC):
     
     async def _extract_product_links_async(self, page, page_url: str) -> List[str]:
         """Async version of product link extraction"""
-        return await self._extract_product_links(page, page_url)
-    
+        try:
+            return await self._extract_product_links(page, page_url)
+        except Exception as e:
+            logger.error(f"Error extracting product links from {page_url}: {e}")
+            self._retry_operation(self._extract_product_links, "extract_product_links", max_retries=3)
+            return []
+
     async def _extract_product_data_async(self, page, product_url: str) -> Optional[Dict[str, Any]]:
         """Async version of product data extraction"""
-        return await self._extract_product_data(page, product_url)
+        try:
+            return await self._extract_product_data(page, product_url)
+        except Exception as e:
+            logger.error(f"Error extracting product data from {product_url}: {e}")
+            self._retry_operation(self._extract_product_data, "extract_product_data", max_retries=3)
+            return None
     
     def _should_include_product(self, product_data: Dict[str, Any]) -> bool:
         """Check if product passes all filters"""

@@ -122,13 +122,12 @@ class GUI(ctk.CTk):
             ctk.set_default_color_theme("blue")
         
         self.selected_website = "Desktop.bg"
-        self.scraper = DesktopScraper('BGN', self.update_gui)
         self.scraper_list = []
         self.scraper_container = None 
         self.cpu_manager = CPUMemoryManagerClass()
         self.website_selection_limit = self.cpu_manager.get_optimal_worker_count()
         self.selected_websites = []
-        self.settings_manager.apply_to_scraper(self.scraper)
+        self.scraper = None
         self.all_products = []
         self.scraper_options = None
         self.setup_gui()
@@ -226,6 +225,7 @@ class GUI(ctk.CTk):
     
         if not self.scraper_container or self.scraper_container.scraper_list != self.scraper_list:
             self.scraper_container = ScraperContainer(self.scraper_list)
+            self.scraper = self.scraper_container.scraper_list[0] if self.scraper_container.scraper_list else None
     
         if search_term and self.scraper_list:
             self.right_console.delete(1.0, 'end')
@@ -261,7 +261,11 @@ class GUI(ctk.CTk):
         try:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-        
+
+            for scraper in self.scraper_list:
+                self.settings_manager.apply_to_scraper(scraper)
+                print(f"DEBUG: Settings applied to {scraper.__class__.__name__}")
+
             self.after(0, lambda: self.update_gui({
                 'type': 'status',
                 'message': f'Starting {len(self.scraper_list)} scrapers...'
@@ -281,25 +285,41 @@ class GUI(ctk.CTk):
     def _process_container_results(self, all_results):
         """Process results from ScraperContainer"""
         try:
-            if self.scraper_container and all_results:
-                deduplicated_results = self.scraper_container.deduplicate_results(all_results)
+            if self.scraper_container:
+                all_products_flat = self.scraper_container.get_all_results_flat()
+                deduplicated_results = self.scraper_container.deduplicate_results()
+            
+                print(f"DEBUG: All results type: {type(all_results)}")
+                print(f"DEBUG: All results keys: {list(all_results.keys()) if isinstance(all_results, dict) else 'Not dict'}")
+                print(f"DEBUG: Flat products count: {len(all_products_flat)}")
+                print(f"DEBUG: Deduplicated count: {len(deduplicated_results)}")
             else:
-                deduplicated_results = all_results or []
+                deduplicated_results = []
         
             self.all_products = deduplicated_results
-        
+    
             self.right_console.delete(1.0, 'end')
-        
+    
             if deduplicated_results:
                 self.right_console.insert('end', f"✅ Scraping Complete!\n")
-                self.right_console.insert('end', f"📊 Found {len(deduplicated_results)} unique products from {len(self.scraper_list)} sources\n\n")
             
+                if isinstance(all_results, dict):
+                    total_by_website = sum(len(products) for products in all_results.values())
+                    self.right_console.insert('end', f"📊 Found {total_by_website} products from {len(all_results)} websites\n")
+                    self.right_console.insert('end', f"📈 After deduplication: {len(deduplicated_results)} unique products\n\n")
+                
+                    for website, products in all_results.items():
+                        self.right_console.insert('end', f"  • {website}: {len(products)} products\n")
+                    self.right_console.insert('end', "\n")
+                else:
+                    self.right_console.insert('end', f"📊 Found {len(deduplicated_results)} unique products\n\n")
+        
                 for i, product in enumerate(deduplicated_results[:5], 1):
                     title = product.get('title', 'N/A')[:50]
                     price = product.get('price', 'N/A')
                     source = product.get('source', 'Unknown')
                     self.right_console.insert('end', f"{i}. {title} - {price} ({source})\n")
-            
+        
                 if len(deduplicated_results) > 5:
                     self.right_console.insert('end', f"... and {len(deduplicated_results) - 5} more products\n")
 
@@ -307,16 +327,23 @@ class GUI(ctk.CTk):
             else:
                 self.right_console.insert('end', "❌ No products found matching your criteria.\n")
                 self.status_label.configure(text="No products found", text_color="orange")
+        
+                if isinstance(all_results, dict) and all_results:
+                    self.right_console.insert('end', "\n📋 Websites scraped:\n")
+                    for website, products in all_results.items():
+                        self.right_console.insert('end', f"  • {website}: {len(products)} products\n")
             
                 self.reconfigure_back_property(self.left_scrape_button, False)
                 self.reconfigure_back_property(self.left_entry, False)
                 self.reconfigure_back_property(self.left_website_select, False)
                 self.reconfigure_back_property(self.left_part_select, False)
                 self.progress_bar.set(0)
-            
+        
         except Exception as e:
             error_msg = f"Error processing results: {str(e)}"
-            print(error_msg)
+            print(f"DEBUG: Error in _process_container_results: {e}")
+            import traceback
+            traceback.print_exc()
             self.after(0, lambda: self._handle_scraping_error(error_msg))
 
     def _handle_scraping_error(self, error_message):
@@ -467,7 +494,7 @@ class GUI(ctk.CTk):
                     self.all_products.append(product)
 
                     display_text = (
-                    f"✅ {scraper_name} Found:\n"
+                    f"✅ {product.get('source', 'N/A')} Found:\n"
                     f"• Title: {product.get('title', 'N/A')[:80]}\n"
                     f"• Price: {product.get('price', 'N/A')}\n"
                     f"• URL: {product.get('url', 'N/A')[:100]}...\n"
@@ -509,76 +536,151 @@ class GUI(ctk.CTk):
     def _convert_prices_and_create_excel(self):
         """Run currency conversion and Excel creation in background thread"""
         try:
+            print(f"DEBUG: Converting prices for {len(self.all_products)} products")
+        
+            target_currency = self.settings_manager.get("preferred_currency", 'BGN')
+            target_symbol = self.currency_symbols.get(target_currency, "лв")
+        
+            conversion_stats = {
+                'total': len(self.all_products),
+                'converted': 0,
+                'failed': 0,
+                'by_currency': {}
+            }
+        
             for product in self.all_products:
                 if 'price' in product and product['price'] != "N/A":
                     try:
-                        price_str = str(product['price']).split('/')[0].strip()
-
-                        for symbol in ["лв", "$", "€", "£", "¥", "USD", "EUR", "BGN", "JPY"]:
-                            price_str = price_str.replace(symbol, "")
-
-                        price_str = price_str.replace(",", "").replace(" ", "")
-                        original_price = float(price_str)
-
-                        converted_price = self.converter.convert_currency(
-                            original_price,
-                            self.scraper.website_currency, 
-                            getattr(self.scraper, 'preferred_currency', 'BGN')
-                        )
-
-                        currency_code = getattr(self.scraper, 'preferred_currency', 'BGN')
-                        symbol = self.currency_symbols.get(currency_code, "лв") 
-
-                        if converted_price is None:
-                            formatted_price = f"лв{original_price:.2f}"  
-                            print(f"⚠️ Conversion failed for {product['title']}, using original price")
-                        else:
-                            formatted_price = f"{symbol}{converted_price:.2f}"
+                        source_currency = product.get('source_currency') or product.get('currency')
                     
-                        product['price'] = formatted_price
+                        if not source_currency:
+                            print(f"⚠️ No source currency for {product.get('title', 'Unknown')}")
+                            conversion_stats['failed'] += 1
+                            continue
+                    
+                        if source_currency not in conversion_stats['by_currency']:
+                            conversion_stats['by_currency'][source_currency] = 0
+                        conversion_stats['by_currency'][source_currency] += 1
+                    
+                        price_str = str(product['price']).split('/')[0].strip()
+                    
+                        for symbol in ["лв", "$", "€", "£", "¥", "USD", "EUR", "BGN", "JPY", "GBP"]:
+                            price_str = price_str.replace(symbol, "")
+                    
+                        price_str = price_str.replace(",", "").replace(" ", "").strip()
+                    
+                        if not price_str:
+                            print(f"⚠️ Empty price string for {product.get('title', 'Unknown')}")
+                            continue
+                    
+                        original_price = float(price_str)
+                    
+                        if source_currency != target_currency:
+                            converted_price = self.converter.convert_currency(
+                                original_price,
+                                source_currency, 
+                                target_currency
+                            )
+                        
+                            if converted_price is None:
+                                original_symbol = self.currency_symbols.get(source_currency, source_currency)
+                                product['price'] = f"{original_symbol}{original_price:.2f}"
+                                product['original_price'] = original_price
+                                product['original_currency'] = source_currency
+                                product['conversion_failed'] = True
+                                conversion_stats['failed'] += 1
+                                print(f"⚠️ Conversion failed for {product.get('title', 'Unknown')} from {source_currency} to {target_currency}")
+                            else:
+                                product['price'] = f"{target_symbol}{converted_price:.2f}"
+                                product['original_price'] = original_price
+                                product['original_currency'] = source_currency
+                                product['converted_price'] = converted_price
+                                product['target_currency'] = target_currency
+                                conversion_stats['converted'] += 1
+                        else:
+                            product['price'] = f"{target_symbol}{original_price:.2f}"
+                            product['original_price'] = original_price
+                            product['original_currency'] = source_currency
+                            conversion_stats['converted'] += 1 
+                        
                     except Exception as e:
-                        print(f"Currency conversion error for {product['title']}: {str(e)}")
+                        print(f"Currency conversion error for {product.get('title', 'Unknown')}: {str(e)}")
+                        import traceback
+                        traceback.print_exc()
+                        conversion_stats['failed'] += 1
                         continue
-
-            currency_code = getattr(self.scraper, 'preferred_currency', 'BGN')
-            symbol = self.currency_symbols.get(currency_code, "лв")
+        
+            print(f"\n📊 CONVERSION STATISTICS:")
+            print(f"  Total products: {conversion_stats['total']}")
+            print(f"  Successfully converted: {conversion_stats['converted']}")
+            print(f"  Failed conversions: {conversion_stats['failed']}")
+            print(f"  Currencies found: {conversion_stats['by_currency']}")
+        
             output_format = self.settings_manager.get("output_format", 'Excel')
             print(f"DEBUG: Output format preference: {output_format}")
-            print(self.all_products)
-            
+        
+            products_by_website = {}
+            for product in self.all_products:
+                website = product.get('source_website', product.get('source', 'Unknown'))
+                if website not in products_by_website:
+                    products_by_website[website] = []
+                products_by_website[website].append(product)
+        
             if output_format == 'JSON':
                 print("JSON preferred!")
                 jsc.JSONCreator(
                     data=self.all_products,
-                    website_scraped=self.selected_website,
+                    website_scraped="Multiple Websites",  
                     output_folder=self.save_folder,
                     pc_part_selected=self.selected_pc_part,
-                    currency_symbol=symbol,
+                    currency_symbol=target_symbol,
                     history_save_preferred=True,
                 )
+            
+                for website, website_products in products_by_website.items():
+                    jsc.JSONCreator(
+                        data=website_products,
+                        website_scraped=website,
+                        output_folder=self.save_folder,
+                        pc_part_selected=self.selected_pc_part,
+                        currency_symbol=target_symbol,
+                        history_save_preferred=False,
+                    )
 
             elif output_format == 'CSV':
                 cs.CSVCreator(
                     data=self.all_products, 
-                    website_scraped=self.selected_website, 
+                    website_scraped="Multiple Websites", 
                     output_folder=self.save_folder, 
                     pc_part_selected=self.selected_pc_part, 
-                    currency_symbol=symbol,
+                    currency_symbol=target_symbol,
                     history_save_preferred=True
                 )
+            
+                for website, website_products in products_by_website.items():
+                    cs.CSVCreator(
+                        data=website_products, 
+                        website_scraped=website, 
+                        output_folder=self.save_folder, 
+                        pc_part_selected=self.selected_pc_part, 
+                        currency_symbol=target_symbol,
+                        history_save_preferred=False
+                    )
+                
             elif output_format == 'Excel':
                 tm.TableMaker(
                     data=self.all_products, 
-                    website_scraped=self.selected_website, 
+                    website_scraped="Multiple Websites", 
                     output_folder=self.save_folder, 
                     pc_part_selected=self.selected_pc_part, 
-                    currency_symbol=symbol
+                    currency_symbol=target_symbol
                 )
-        
+    
             self.after(0, self._on_processing_complete)
 
         except Exception as e:
             print(f"Background processing error: {e}")
+            import traceback
             traceback.print_exc()
             error_message = str(e)
             self.after(0, lambda: self.status_label.configure(
@@ -756,7 +858,7 @@ class GUI(ctk.CTk):
                 print(f"Stopped {stopped_count} scrapers")
             except Exception as e:
                 print(f"Error stopping scrapers: {e}")
-        elif self.scraper:
+        elif hasattr(self, 'self.scraper'):
             print("Stopping single scraper...")
             try:
                 self.scraper.stop_scraping()
