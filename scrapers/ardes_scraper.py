@@ -23,23 +23,34 @@ class ArdesScraper(AsyncPlaywrightBaseScraper):
         """Construct paginated URL properly for Ardes"""
         if self.current_page == 1:
             return base_url
-        
+    
         parsed_url = urlparse(base_url)
-        query_params = parse_qs(parsed_url.query)
-
-        query_params['page'] = [str(self.current_page)]
-
-        new_query = urlencode(query_params, doseq=True)
-        new_url = urlunparse((
-            parsed_url.scheme,
-            parsed_url.netloc,
-            parsed_url.path,
-            parsed_url.params,
-            new_query,
-            parsed_url.fragment
-        ))
+        path_parts = parsed_url.path.split('/')
+    
+        if 'page' in path_parts:
+            for i, part in enumerate(path_parts):
+                if part == 'page' and i + 1 < len(path_parts):
+                    path_parts[i + 1] = str(self.current_page)
+                    break
+        else:
+            if 'products' in path_parts:
+                products_index = path_parts.index('products')
+                path_parts.insert(products_index + 1, 'page')
+                path_parts.insert(products_index + 2, str(self.current_page))
+            else:
+                if parsed_url.path.endswith('/'):
+                    new_path = f"{parsed_url.path}page/{self.current_page}"
+                else:
+                    new_path = f"{parsed_url.path}/page/{self.current_page}"
+                parsed_url = parsed_url._replace(path=new_path)
+                self.current_page += 1
+                return urlunparse(parsed_url)
+    
+        new_path = '/'.join(path_parts)
+        parsed_url = parsed_url._replace(path=new_path)
+    
         self.current_page += 1
-        return new_url
+        return urlunparse(parsed_url)
     
     async def _extract_product_links(self, page: Page, page_url: str) -> List[str]:
         """Get all product links using Playwright with retry logic"""
