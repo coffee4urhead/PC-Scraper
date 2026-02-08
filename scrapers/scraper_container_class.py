@@ -129,14 +129,13 @@ class ScraperContainer:
         except Exception as e:
             logger.error(f"Error running scrapers: {e}")
             return self._all_results
-        finally:
-            await self._cleanup_contexts()
     
     async def _cleanup_contexts(self):
         """Clean up all contexts"""
         for scraper_id, context in self._contexts.items():
             try:
                 await context.close()
+                self.context = None
                 logger.debug(f"Closed context for scraper {scraper_id}")
             except Exception as e:
                 logger.error(f"Error closing context for scraper {scraper_id}: {e}")
@@ -291,37 +290,6 @@ class ScraperContainer:
                     summary['by_scraper'][scraper] = summary['by_scraper'].get(scraper, 0) + 1
         
         return summary
-    
-    def deduplicate_results(self, results: List[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
-        """
-        Deduplicate results by URL.
-        If no results parameter is provided, deduplicate internal _all_results.
-        """
-        if results is not None:
-            seen_urls = set()
-            deduplicated = []
-            
-            for product in results:
-                if product and 'url' in product:
-                    if product['url'] not in seen_urls:
-                        seen_urls.add(product['url'])
-                        deduplicated.append(product)
-            
-            logger.info(f"Deduplicated {len(results)} -> {len(deduplicated)} products")
-            return deduplicated
-        else:
-            flat_results = self.get_all_results_flat()
-            seen_urls = set()
-            deduplicated = []
-            
-            for product in flat_results:
-                if product and 'url' in product:
-                    if product['url'] not in seen_urls:
-                        seen_urls.add(product['url'])
-                        deduplicated.append(product)
-            
-            logger.info(f"Deduplicated {len(flat_results)} -> {len(deduplicated)} products")
-            return deduplicated
     
     def deduplicate_results(self, results: List[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """

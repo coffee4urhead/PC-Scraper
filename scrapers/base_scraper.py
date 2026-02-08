@@ -182,7 +182,17 @@ class AsyncPlaywrightBaseScraper(ABC):
             self._running = False
             self._update_gui({'type': 'error', 'message': str(e)})
             return []
-    
+
+    async def _cleanup_scraper_resources(self):
+        """Clean up scraper-specific resources"""
+        try:
+            if hasattr(self, '_context') and self._context:
+                await self._context.close()
+                self._context = None
+                logger.debug("Scraper context closed")
+        except Exception as e:
+            logger.error(f"Error closing scraper context: {e}")
+
     async def _distributed_scrape(self, search_term: str, max_pages: int, num_workers: int) -> List[Dict[str, Any]]:
         """Distribute scraping across multiple processes/cores with stop support"""
         
@@ -302,21 +312,26 @@ class AsyncPlaywrightBaseScraper(ABC):
 
         logger.info(f"Worker {worker_id}: Scraping page {page_num}: {page_url}")
 
+        links_page = None
+        product_tasks = []
+        product_pages = []
         try:
-            if not hasattr(context, "_main_page"):
-                context._main_page = await context.new_page()
-
-            page = context._main_page
-            page.set_default_timeout(60000)
-            await page.goto(page_url, wait_until="domcontentloaded", timeout=30000)
+            links_page = await context.new_page()
+            links_page.set_default_timeout(60000)
+            await links_page.goto(page_url, wait_until="domcontentloaded", timeout=30000)
 
             if self._stop_requested:
+                await links_page.close()
                 return []
 
             await asyncio.sleep(random.uniform(1.5, 3.0))
 
-            product_links = await self._extract_product_links_async(page, page_url)
-
+            product_links = await self._extract_product_links_async(links_page, page_url)
+            
+            await links_page.evaluate("window.scrollTo(0, Math.random() * 500)")
+            await asyncio.sleep(random.uniform(0.5, 1.5))
+            await links_page.close()
+            
             if not product_links:
                 logger.warning(f"Worker {worker_id}: No products found on page {page_num}")
                 return []
@@ -324,9 +339,6 @@ class AsyncPlaywrightBaseScraper(ABC):
             logger.info(
                 f"Worker {worker_id}: Found {len(product_links)} products on page {page_num}"
             )
-
-            await page.evaluate("window.scrollTo(0, Math.random() * 500)")
-            await asyncio.sleep(random.uniform(0.5, 1.5))
 
             semaphore = asyncio.Semaphore(self.max_concurrent_products)
 
@@ -336,10 +348,20 @@ class AsyncPlaywrightBaseScraper(ABC):
                         return None
 
                     await asyncio.sleep(random.uniform(2.5, 5.0))
-
-                    return await self._scrape_single_product_async(
-                        page, product_url, worker_id
-                    )
+                
+                    product_page = await context.new_page()
+                    product_page.set_default_timeout(60000)
+                
+                    try:
+                        result = await self._scrape_single_product_async(
+                            product_page, product_url, worker_id
+                        )
+                        return result
+                    finally:
+                        try:
+                            await product_page.close()
+                        except:
+                            pass
 
             tasks = [
                 scrape_with_delay(url)
@@ -375,7 +397,6 @@ class AsyncPlaywrightBaseScraper(ABC):
             logger.error(f"Worker {worker_id}: Error scraping page {page_num}: {e}")
             return []
 
-
     async def _scrape_single_product_async(self, page, product_url: str, worker_id: int):
         """Scrape a single product asynchronously with stop support and reduced page reloads."""
 
@@ -409,6 +430,8 @@ class AsyncPlaywrightBaseScraper(ABC):
 
             if self._stop_requested or not product_data:
                 return None
+
+            product_data['url'] = product_url
 
             if product_data:
                 self._update_gui({"type": "product", 'data': product_data})

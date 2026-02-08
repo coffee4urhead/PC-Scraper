@@ -19,8 +19,8 @@
         "preferred_size": "20",
         "preferred_theme": "System",
         "preferred_language": "ja-JP",
-        "primary_color": "#FFA500",
-        "secondary_color": "#FF8C00",
+        "primary_color": "#2E8B57",
+        "secondary_color": "#228B22",
         "save_folder": "/home/demian/Desktop/ScrapeProducts"
     }
 }

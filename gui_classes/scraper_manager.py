@@ -43,7 +43,7 @@ class ScraperManager:
             "Pro.bg": "BGN",
             "TechnoMall.bg": "BGN",
             "TehnikStore.bg": "BGN",
-            "AllStore.bg": "BGN",
+            "AllStore.bg": "EUR",
             "Senetic.bg": "BGN",
             "Thx.bg": "BGN",
             "GtComputers.bg": "BGN",
