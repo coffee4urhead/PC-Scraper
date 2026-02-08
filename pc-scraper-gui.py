@@ -29,7 +29,7 @@ def resource_path(relative_path):
     
     return os.path.join(base_path, relative_path)
 
-#when one website comlpetes scraping should close the context of the website to free network bandwidth
+# need to reimplement classes from pc_tech_scraper down to the last
 
 class GUI(ctk.CTk):
     def __init__(self):

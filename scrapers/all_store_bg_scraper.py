@@ -8,7 +8,6 @@ class AllStoreScraper(AsyncPlaywrightBaseScraper):
         self.base_url = "https://allstore.bg/"
         self.current_page = 1
         self.update_gui_callback = update_gui_callback
-        self._extract_allstore_price = None
         self.website_that_is_scraped = "Allstore.bg"
 
     def _get_base_url(self, search_term):

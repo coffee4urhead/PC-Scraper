@@ -46,10 +46,10 @@ class ScraperManager:
             "AllStore.bg": "EUR",
             "Senetic.bg": "BGN",
             "Thx.bg": "BGN",
-            "GtComputers.bg": "BGN",
+            "GtComputers.bg": "EUR",
             "Ezona.bg": "BGN",
             "Tova.bg": "BGN",
-            "Hits.bg": "BGN",
+            "Hits.bg": "EUR",
             "Amazon.co.uk": "GBP",
             "Amazon.de": "EUR"
         }
