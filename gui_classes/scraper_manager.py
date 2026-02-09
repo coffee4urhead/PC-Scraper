@@ -108,7 +108,7 @@ class ScraperManager:
             else:
                 raise ValueError(f"Unknown website: {website_name}")
             
-            self.settings_manager.apply_to_scraper(scraper)
+            self._apply_settings_to_scraper(scraper)  
             self.current_scraper = scraper
             
             print(f"DEBUG: Scraper created successfully for {website_name}")
@@ -118,7 +118,29 @@ class ScraperManager:
             print(f"DEBUG: Scraper initialization failed: {e}")
             self.master.update_gui(f"Error creating scraper: {str(e)}", level="error")
             return None
+    def _apply_settings_to_scraper(self, scraper):
+        """Apply settings directly to an individual scraper"""
+        if not scraper or not self.settings_manager:
+            return
     
+        try:
+            scraper_settings = {k: v for k, v in self.settings_manager.settings.items() 
+                            if k != 'ui_settings'}
+        
+            for key, value in scraper_settings.items():
+                try:
+                    if hasattr(scraper, key):
+                        setattr(scraper, key, value)
+                    else:
+                        scraper.__dict__[key] = value
+                except Exception as e:
+                    print(f"⚠️ Error setting {key} on scraper {scraper.__class__.__name__}: {e}")
+        
+            print(f"✅ Applied settings to {scraper.__class__.__name__}")
+        
+        except Exception as e:
+            print(f"❌ Error applying settings to scraper: {e}")
+
     def get_current_scraper(self):
         """Get the current active scraper"""
         return self.current_scraper

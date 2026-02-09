@@ -292,11 +292,32 @@ class SettingsManager:
         if key in ['primary_color', 'secondary_color']:
             self.update_theme()
     
-    def apply_to_scraper(self, scraper):
+    def apply_to_scraper(self, scraper_container):
         """Apply scraper settings to a scraper instance"""
-        scraper_settings = {k: v for k, v in self.settings.items() if k != 'ui_settings'}
-        for key, value in scraper_settings.items():
-            setattr(scraper, key, value)
+        if scraper_container is None:
+            print("⚠️ Cannot apply settings: scraper_container is None")
+            return
+        try:
+            scraper_settings = {k: v for k, v in self.settings.items() if k != 'ui_settings'}
+            applied_count = 0
+        
+            for scraper in scraper_container.scraper_list:
+                for key, value in scraper_settings.items():
+                    try:
+                        if hasattr(scraper, key):
+                            setattr(scraper, key, value)
+                        else:
+                            scraper.__dict__[key] = value
+                        applied_count += 1
+                    except Exception as e:
+                        print(f"⚠️ Error setting {key} on scraper {scraper.__class__.__name__}: {e}")
+        
+            print(f"✅ Applied {applied_count} settings to {len(scraper_container.scraper_list)} scrapers")
+        
+        except Exception as e:
+            print(f"❌ Error applying settings to scraper container: {e}")
+            import traceback
+            traceback.print_exc()
     
     def get_config_directory(self):
         """Get the config directory path"""

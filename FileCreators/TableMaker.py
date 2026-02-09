@@ -12,10 +12,24 @@ class TableMaker:
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.filename = os.path.join(output_folder, f"{self.pc_part_selected}_Data_{timestamp}.xlsx")
+        self.create_table(self.filename)
+
+        history_dir = os.path.join("./scrape-history/data/excel", self.website_scraped, self.pc_part_selected)
+        os.makedirs(history_dir, exist_ok=True)
+        history_filename = os.path.join(history_dir, f"{self.website_scraped}_{self.pc_part_selected}_{timestamp}.xlsx")
+        self.create_table(history_filename)
         self.create_table()
 
-    def create_table(self):
-        workbook = xlsxwriter.Workbook(self.filename)
+    def create_table(self, filename=None):
+        if filename is None:
+            print("⚠️ No filename provided for Excel creation")
+            return 
+
+        directory = os.path.dirname(filename)
+        if directory:  
+            os.makedirs(directory, exist_ok=True)
+            
+        workbook = xlsxwriter.Workbook(filename)
         worksheet = workbook.add_worksheet(f"{self.pc_part_selected} List of scraped data")
 
         header_format = workbook.add_format({
@@ -61,7 +75,6 @@ class TableMaker:
             worksheet.write(0, col, header, header_format)
 
         for row, product in enumerate(self.data, start=1):
-            # Product Name with text wrapping
             worksheet.write(row, 0, product.get("title", "N/A"), text_format)
 
             price_value = product.get("price", "N/A")
@@ -98,32 +111,26 @@ class TableMaker:
                     field_name = dynamic_columns[col - 3]
                     value = str(self.data[row_idx].get(field_name, "N/A"))
                 
-                # Count line breaks for better width calculation
                 line_count = value.count('\n') + 1
                 avg_line_length = len(value) / line_count if line_count > 0 else len(value)
                 
-                # Adjust width based on content
                 adjusted_length = min(max(avg_line_length, len(header)), 30)
                 if adjusted_length > max_len:
                     max_len = adjusted_length
             
-            # Set column width - wider for wrapped text
             base_width = min(max_len + 2, 50)
-            if col == 0:  # Product Name - usually needs more space
+            if col == 0: 
                 worksheet.set_column(col, col, max(base_width, 20))
-            elif col == 2:  # URL - can be very long
+            elif col == 2: 
                 worksheet.set_column(col, col, max(base_width, 40))
             else:
                 worksheet.set_column(col, col, base_width)
 
-        # Set row heights for better visibility of wrapped text
-        worksheet.set_default_row(20)  # Default row height
+        worksheet.set_default_row(20)  
         
-        # Adjust specific rows if they have lots of content
         for row_idx in range(1, len(self.data) + 1):
-            # You can adjust this logic based on your content
             product_name = str(self.data[row_idx-1].get("title", ""))
-            if len(product_name) > 50:  # If product name is long, increase row height
+            if len(product_name) > 50:  
                 worksheet.set_row(row_idx, 30)
 
         self._create_color_formatting(workbook, worksheet, self.data, self.pc_part_selected)
@@ -140,7 +147,7 @@ class TableMaker:
             worksheet.insert_chart('J5', chart)
 
         workbook.close()
-        print(f"File saved: {self.filename}")
+        print(f"File saved: {filename}")
 
     def _create_color_formatting(self, workbook, worksheet, data, part_selected):
         format_tier1 = workbook.add_format({

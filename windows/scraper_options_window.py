@@ -3,7 +3,7 @@ import customtkinter as ctk
 class ScraperOptionsWindow(ctk.CTkToplevel):
     def __init__(self, master=None, scraper=None, settings_manager=None):
         super().__init__(master)
-        self.scraper = scraper
+        self.scraper_container = scraper
         self.settings_manager = settings_manager
 
         self.geometry("520x820")
@@ -247,41 +247,36 @@ class ScraperOptionsWindow(ctk.CTkToplevel):
         # ====================================================
         self.load_current_settings()
 
+    def _toggle_custom_format(self):
+        """Show/hide custom format entry based on radio selection"""
+        if self.formatting_var.get() == "custom":
+            self.custom_format_frame.pack(fill="x", padx=5, pady=5)
+        else:
+            self.custom_format_frame.pack_forget()
+    
     def load_current_settings(self):
-        """Load current scraper settings into the UI"""
-        if not self.scraper:
-            print("DEBUG: No scraper reference available")
+        """Load current scraper settings into the UI from the first scraper in container"""
+        if not self.scraper_container or not self.scraper_container.scraper_list:
+            print("DEBUG: No scraper container or no scrapers available")
+            if self.settings_manager:
+                self._load_from_settings_manager()
             return
 
-        print("🔄 Loading current scraper settings...")
-    
-        settings_to_load = {
-            'preferred_currency': 'BGN',
-            'price_format': '0.00',
-            'preferred_browser': 'Chrome', 
-            'headless': False,
-            'max_pages': 10,
-            'delay_between_requests': 2.0,
-            'random_delay_multiplier': 1.5,
-            'min_price': '',
-            'max_price': '',
-            'exclude_keywords': '',
-            'output_format': 'JSON',
-            'debug_logs': False,
-            'auto_close': True,
-        }
-    
-        preferred_currency = getattr(self.scraper, 'preferred_currency', 'BGN')
-    
+        print("🔄 Loading current scraper settings from first scraper...")
+        
+        first_scraper = self.scraper_container.scraper_list[0]
+        
+        preferred_currency = getattr(first_scraper, 'preferred_currency', 'BGN')
+        
         currency_display_text = "🇧🇬 BGN - Bulgarian Lev" 
         for display_text, code in self.currency_mapping.items():
             if code == preferred_currency:
                 currency_display_text = display_text
                 break
-    
+        
         self.currency_menu.set(currency_display_text)
-    
-        price_format = getattr(self.scraper, 'price_format', '0.00')
+        
+        price_format = getattr(first_scraper, 'price_format', '0.00')
         if price_format != "0.00":
             self.formatting_var.set("custom")
             self.custom_format_entry.delete(0, 'end')
@@ -290,47 +285,137 @@ class ScraperOptionsWindow(ctk.CTkToplevel):
         else:
             self.formatting_var.set("default")
             self._toggle_custom_format()
-    
-        self.browser_menu.set(getattr(self.scraper, 'preferred_browser', 'Chrome'))
-        self.headless_switch.select() if getattr(self.scraper, 'headless', False) else self.headless_switch.deselect()
-    
-        max_pages = getattr(self.scraper, 'max_pages', 10)
+        
+        self.browser_menu.set(getattr(first_scraper, 'preferred_browser', 'Chrome'))
+        self.headless_switch.select() if getattr(first_scraper, 'headless', False) else self.headless_switch.deselect()
+        
+        max_pages = getattr(first_scraper, 'max_pages', 10)
         self.max_pages_slider.set(max_pages)
         self.max_pages_count.configure(text=str(max_pages))
-    
-        delay = getattr(self.scraper, 'delay_between_requests', 2.0)
+        
+        delay = getattr(first_scraper, 'delay_between_requests', 2.0)
         self.delay_slider.set(delay)
         self.delay_value_label.configure(text=f"{delay:.1f}s")
-    
-        random_multiplier = getattr(self.scraper, 'random_delay_multiplier', 1.5)
+        
+        random_multiplier = getattr(first_scraper, 'random_delay_multiplier', 1.5)
         self.random_slider.set(random_multiplier)
         self.random_value_label.configure(text=f"{random_multiplier:.2f}×")
 
-        min_price = getattr(self.scraper, 'min_price', '')
-        max_price = getattr(self.scraper, 'max_price', '')
-        exclude_keywords = getattr(self.scraper, 'exclude_keywords', '')
-    
+        min_price = getattr(first_scraper, 'min_price', '')
+        max_price = getattr(first_scraper, 'max_price', '')
+        exclude_keywords = getattr(first_scraper, 'exclude_keywords', '')
+        
         self.min_price_entry.delete(0, 'end')
         self.min_price_entry.insert(0, str(min_price))
 
         self.max_price_entry.delete(0, 'end')
         self.max_price_entry.insert(0, str(max_price))
-    
+        
         self.exclude_entry.delete(0, 'end')
         self.exclude_entry.insert(0, str(exclude_keywords))
 
-        self.output_format_menu.set(getattr(self.scraper, 'output_format', 'JSON'))
-        self.debug_switch.select() if getattr(self.scraper, 'debug_logs', False) else self.debug_switch.deselect()
-        self.auto_close_switch.select() if getattr(self.scraper, 'auto_close', True) else self.auto_close_switch.deselect()
+        self.output_format_menu.set(getattr(first_scraper, 'output_format', 'JSON'))
+        self.debug_switch.select() if getattr(first_scraper, 'debug_logs', False) else self.debug_switch.deselect()
+        self.auto_close_switch.select() if getattr(first_scraper, 'auto_close', True) else self.auto_close_switch.deselect()
 
-        print("✅ Current settings loaded into UI")
+        print("✅ Current settings loaded into UI from scraper container")
 
-    def _toggle_custom_format(self):
-        """Show/hide custom format entry based on radio selection"""
-        if self.formatting_var.get() == "custom":
-            self.custom_format_frame.pack(fill="x", padx=5, pady=5)
+    def _load_from_settings_manager(self):
+        """Load settings from settings manager when no scraper is available"""
+        if not self.settings_manager:
+            return
+        
+        print("🔄 Loading settings from settings manager...")
+        
+        preferred_currency = self.settings_manager.get('preferred_currency', 'BGN')
+        currency_display_text = "🇧🇬 BGN - Bulgarian Lev" 
+        for display_text, code in self.currency_mapping.items():
+            if code == preferred_currency:
+                currency_display_text = display_text
+                break
+        self.currency_menu.set(currency_display_text)
+        
+        price_format = self.settings_manager.get('price_format', '0.00')
+        if price_format != "0.00":
+            self.formatting_var.set("custom")
+            self.custom_format_entry.delete(0, 'end')
+            self.custom_format_entry.insert(0, price_format)
+            self._toggle_custom_format()  
         else:
-            self.custom_format_frame.pack_forget()
+            self.formatting_var.set("default")
+            self._toggle_custom_format()
+        
+        self.browser_menu.set(self.settings_manager.get('preferred_browser', 'Chrome'))
+        self.headless_switch.select() if self.settings_manager.get('headless', False) else self.headless_switch.deselect()
+        
+        max_pages = self.settings_manager.get('max_pages', 10)
+        self.max_pages_slider.set(max_pages)
+        self.max_pages_count.configure(text=str(max_pages))
+        
+        delay = self.settings_manager.get('delay_between_requests', 2.0)
+        self.delay_slider.set(delay)
+        self.delay_value_label.configure(text=f"{delay:.1f}s")
+        
+        random_multiplier = self.settings_manager.get('random_delay_multiplier', 1.5)
+        self.random_slider.set(random_multiplier)
+        self.random_value_label.configure(text=f"{random_multiplier:.2f}×")
+
+        self.min_price_entry.delete(0, 'end')
+        self.min_price_entry.insert(0, str(self.settings_manager.get('min_price', '')))
+
+        self.max_price_entry.delete(0, 'end')
+        self.max_price_entry.insert(0, str(self.settings_manager.get('max_price', '')))
+        
+        self.exclude_entry.delete(0, 'end')
+        self.exclude_entry.insert(0, str(self.settings_manager.get('exclude_keywords', '')))
+
+        self.output_format_menu.set(self.settings_manager.get('output_format', 'JSON'))
+        self.debug_switch.select() if self.settings_manager.get('debug_logs', False) else self.debug_switch.deselect()
+        self.auto_close_switch.select() if self.settings_manager.get('auto_close', True) else self.auto_close_switch.deselect()
+
+        print("✅ Current settings loaded from settings manager")
+
+    def apply_settings(self):
+        """Apply settings to all scrapers in the container"""
+        settings = self.collect_settings()
+
+        if self.settings_manager:
+            for key, value in settings.items():
+                self.settings_manager.set(key, value)
+        
+        if self.scraper_container and self.scraper_container.scraper_list:
+            for scraper in self.scraper_container.scraper_list:
+                print(f"Applying settings to {scraper.__class__.__name__}...")
+                for key, value in settings.items():
+                    try:
+                        setattr(scraper, key, value)
+                    except AttributeError:
+                        scraper.__dict__[key] = value
+            print(f"✅ Applied settings to {len(self.scraper_container.scraper_list)} scrapers")
+        else:
+            print("⚠️ No active scrapers to apply settings to")
+        
+        if self.scraper_container:
+            self.scraper_container.set_filter_for_all(
+                min_price=settings.get('min_price'),
+                max_price=settings.get('max_price'),
+                exclude_keywords=settings.get('exclude_keywords')
+            )
+            print("✅ Filters applied to scraper container")
+
+        print("✅ Applied Scraper Settings:")
+        for k, v in settings.items():
+            print(f"  {k}: {v}")
+
+    def save_and_close(self):
+        """Apply settings and close the window"""
+        self.apply_settings()
+        self.destroy()
+    
+    def update_scraper_reference(self, new_scraper_container):
+        """Update the scraper container reference and reload settings"""
+        self.scraper_container = new_scraper_container
+        self.load_current_settings()
 
     def update_max_pages_value(self, value):
         self.max_pages_count.configure(text=f"{int(value)}")
@@ -371,26 +456,3 @@ class ScraperOptionsWindow(ctk.CTkToplevel):
     # ====================================================
     # Button actions
     # ====================================================
-    def apply_settings(self):
-        """Apply settings without closing the window"""
-        settings = self.collect_settings()
-
-        if self.settings_manager:
-            for key, value in settings.items():
-                self.settings_manager.set(key, value)
-        
-            self.settings_manager.apply_to_scraper(self.scraper)
-
-        print("✅ Applied Scraper Settings:")
-        for k, v in settings.items():
-            print(f"  {k}: {v}")
-
-    def save_and_close(self):
-        """Apply settings and close the window"""
-        self.apply_settings()
-        self.destroy()
-    
-    def update_scraper_reference(self, new_scraper):
-        """Update the scraper reference and reload settings"""
-        self.scraper = new_scraper
-        self.load_current_settings()

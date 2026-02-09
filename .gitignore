@@ -1,9 +1,13 @@
 # Python virtual environment
 venv/
+vir-env/
 .venv/
 .env/
 ENV/
 .env
+
+scrape-history/
+configs/
 
 # Python cache and build files
 __pycache__/

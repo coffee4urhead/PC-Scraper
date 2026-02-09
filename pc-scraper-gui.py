@@ -8,11 +8,11 @@ import traceback
 import sys
 
 from settings_manager import SettingsManager
-from FileCreators.TableMaker import TableMaker as tm
 from scrapers.cpu_memory_manager import CPUMemoryManagerClass
 from scrapers.scraper_container_class import ScraperContainer
 from FileCreators import JSON_creator as jsc
 from FileCreators import CSV_creator as cs
+from FileCreators import TableMaker as exc
 from windows.scraper_options_window import ScraperOptionsWindow
 from gui_classes.setup_gui_main import SetupGUI
 from currency_converter import RealCurrencyConverter
@@ -30,6 +30,8 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 # need to reimplement classes from pc_tech_scraper down to the last
+# need to reimplement the stop logic to not clear out the scraper when the person chooses to scrape again
+# need to add exclusions after someone selected the wrong scraper for the website they dont want
 
 class GUI(ctk.CTk):
     def __init__(self):
@@ -224,11 +226,15 @@ class GUI(ctk.CTk):
 
     def _start_scraping(self):
         search_term = self.left_entry.get().strip()
-    
-        if not self.scraper_container or self.scraper_container.scraper_list != self.scraper_list:
+
+        if not self.scraper_container:
             self.scraper_container = ScraperContainer(self.scraper_list)
-            self.scraper = self.scraper_container.scraper_list[0] if self.scraper_container.scraper_list else None
+        else:
+            self.scraper_container.scraper_list = self.scraper_list
     
+        if self.scraper_container.scraper_list:
+            self.scraper = self.scraper_container.scraper_list[0]
+
         if search_term and self.scraper_list:
             self.right_console.delete(1.0, 'end')
             self.reconfigure_back_property(self.left_scrape_button, True)
@@ -238,9 +244,9 @@ class GUI(ctk.CTk):
             self.progress_bar['value'] = 0
             self.status_label.configure(text="Starting scrape...")
             self.all_products.clear()
-    
+
             self._apply_filters_to_scrapers()
-        
+    
             threading.Thread(
                 target=self._run_scrapers_with_container,
                 args=(search_term,),
@@ -265,7 +271,7 @@ class GUI(ctk.CTk):
             asyncio.set_event_loop(loop)
 
             for scraper in self.scraper_list:
-                self.settings_manager.apply_to_scraper(scraper)
+                self.settings_manager.apply_to_scraper(self.scraper_container)
                 print(f"DEBUG: Settings applied to {scraper.__class__.__name__}")
 
             self.after(0, lambda: self.update_gui({
@@ -405,7 +411,7 @@ class GUI(ctk.CTk):
 
     def get_scraper_windows_options(self):
         if self.scraper_options is None or not self.scraper_options.winfo_exists():
-            self.scraper_options = ScraperOptionsWindow(self, scraper=self.scraper, settings_manager=self.settings_manager)
+            self.scraper_options = ScraperOptionsWindow(self, self.scraper_container, settings_manager=self.settings_manager)
         else:
             self.scraper_options.focus()
     
@@ -627,57 +633,65 @@ class GUI(ctk.CTk):
                 if website not in products_by_website:
                     products_by_website[website] = []
                 products_by_website[website].append(product)
-        
-            if output_format == 'JSON':
-                print("JSON preferred!")
-                jsc.JSONCreator(
-                    data=self.all_products,
-                    website_scraped="Multiple Websites",  
-                    output_folder=self.save_folder,
-                    pc_part_selected=self.selected_pc_part,
-                    currency_symbol=target_symbol,
-                    history_save_preferred=True,
-                )
-            
-                for website, website_products in products_by_website.items():
+
+            for website, website_products in products_by_website.items():
+                print(f"DEBUG: Website '{website}' has {len(website_products)} products after conversion")
+                
+                if output_format == 'JSON':
+                    print("JSON preferred!")
                     jsc.JSONCreator(
                         data=website_products,
-                        website_scraped=website,
+                        website_scraped=website,  
                         output_folder=self.save_folder,
                         pc_part_selected=self.selected_pc_part,
                         currency_symbol=target_symbol,
-                        history_save_preferred=False,
                     )
-
-            elif output_format == 'CSV':
-                cs.CSVCreator(
-                    data=self.all_products, 
-                    website_scraped="Multiple Websites", 
-                    output_folder=self.save_folder, 
-                    pc_part_selected=self.selected_pc_part, 
-                    currency_symbol=target_symbol,
-                    history_save_preferred=True
-                )
-            
-                for website, website_products in products_by_website.items():
+        
+                elif output_format == 'CSV':
                     cs.CSVCreator(
                         data=website_products, 
                         website_scraped=website, 
                         output_folder=self.save_folder, 
                         pc_part_selected=self.selected_pc_part, 
                         currency_symbol=target_symbol,
-                        history_save_preferred=False
-                    )
-                
+                )
+                elif output_format == 'Excel':
+                    exc.TableMaker(
+                        data=website_products, 
+                        website_scraped=website, 
+                        output_folder=self.save_folder, 
+                        pc_part_selected=self.selected_pc_part, 
+                        currency_symbol=target_symbol
+                )
+            
+            if output_format == 'JSON':
+                print("Creating combined JSON file...")
+                jsc.JSONCreator(
+                data=self.all_products,
+                website_scraped="Combined",  
+                output_folder=self.save_folder,
+                pc_part_selected=self.selected_pc_part,
+                currency_symbol=target_symbol,
+            )
+            elif output_format == 'CSV':
+                print("Creating combined CSV file...")
+                cs.CSVCreator(
+                data=self.all_products,
+                website_scraped="Combined", 
+                output_folder=self.save_folder, 
+                pc_part_selected=self.selected_pc_part, 
+                currency_symbol=target_symbol, 
+            )
             elif output_format == 'Excel':
-                tm.TableMaker(
-                    data=self.all_products, 
-                    website_scraped="Multiple Websites", 
+                print("Creating combined Excel file...")
+                exc.TableMaker(
+                    data=self.all_products,
+                    website_scraped="Combined",
                     output_folder=self.save_folder, 
                     pc_part_selected=self.selected_pc_part, 
                     currency_symbol=target_symbol
                 )
-    
+        
             self.after(0, self._on_processing_complete)
 
         except Exception as e:

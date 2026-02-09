@@ -3,12 +3,11 @@ import datetime
 import os
 
 class CSVCreator:
-    def __init__(self, data, website_scraped, output_folder, pc_part_selected, currency_symbol="", history_save_preferred=True):
+    def __init__(self, data, website_scraped, output_folder, pc_part_selected, currency_symbol=""):
         self.data = data
         self.website_scraped = website_scraped
         self.currency_symbol = currency_symbol or "$"
         self.pc_part_selected = pc_part_selected
-        self.history_save_preferred = history_save_preferred
 
         os.makedirs(output_folder, exist_ok=True)
         
@@ -16,9 +15,7 @@ class CSVCreator:
         self.filename = os.path.join(output_folder, f"{self.pc_part_selected}_Data_{timestamp}.csv")
 
         self.create_csv()
-        
-        if self.history_save_preferred:
-            self.create_history_copy(timestamp)
+        self.create_history_copy(timestamp)
 
     def create_csv(self):
         """Create the main CSV file"""
