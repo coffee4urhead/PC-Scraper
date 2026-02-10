@@ -29,7 +29,7 @@ def resource_path(relative_path):
     
     return os.path.join(base_path, relative_path)
 
-# need to reimplement classes from techno_mall_scraper down to the last
+# only Senetic needs fixing 
 # need to reimplement the stop logic to not clear out the scraper when the person chooses to scrape again
 # need to add exclusions after someone selected the wrong scraper for the website they dont want
 # need to fix the unknown started scraping issue

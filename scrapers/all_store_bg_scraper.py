@@ -125,7 +125,7 @@ class AllStoreScraper(AsyncPlaywrightBaseScraper):
                 'price': price,
                 'url': product_url,
                 'currency': self.website_currency,
-                'source': 'AllStore.bg',  
+                'source': self.website_that_is_scraped,  
                 'source_currency': self.website_currency,
                 'page': self.current_page
             }

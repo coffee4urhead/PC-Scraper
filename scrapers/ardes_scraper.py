@@ -55,20 +55,21 @@ class ArdesScraper(AsyncPlaywrightBaseScraper):
     async def _extract_product_links(self, page: Page, page_url: str) -> List[str]:
         """Get all product links using Playwright with retry logic"""
         print(f"DEBUG: Extracting product links from: {page_url}")
-    
+
         for attempt in range(3):
             try:
                 print(f"DEBUG: Attempt {attempt + 1} for {page_url}")
 
                 await page.mouse.wheel(0, random.randint(400, 900))
                 await asyncio.sleep(random.uniform(0.5, 1.5))
-            
+        
                 wait_strategies = ['domcontentloaded', 'load', 'networkidle']
                 wait_strategy = wait_strategies[min(attempt, len(wait_strategies)-1)]
-            
+        
                 await page.goto(page_url, wait_until=wait_strategy, timeout=30000)
                 print(f"DEBUG: Page loaded successfully: {page_url} (wait_until: {wait_strategy})")
             
+                # Wait for product grid
                 selectors_to_try = [
                     'div.products-grid',
                     '.search-results', 
@@ -76,7 +77,7 @@ class ArdesScraper(AsyncPlaywrightBaseScraper):
                     '[class*="product"]',
                     '.product-list'
                 ]
-            
+        
                 found_selector = None
                 for selector in selectors_to_try:
                     try:
@@ -86,7 +87,7 @@ class ArdesScraper(AsyncPlaywrightBaseScraper):
                         break
                     except Exception:
                         continue
-            
+        
                 if not found_selector:
                     print(f"DEBUG: Could not find main product grid on attempt {attempt + 1}")
                     if attempt < 2:
@@ -98,23 +99,97 @@ class ArdesScraper(AsyncPlaywrightBaseScraper):
                         await page.screenshot(path=screenshot_path, full_page=True)
                         print(f"DEBUG: Screenshot saved to {screenshot_path}")
                         return []
+        
+                # Get ALL product elements
+                product_elements = await page.query_selector_all('div.product')
+                print(f"DEBUG: Found {len(product_elements)} product elements")
             
-                link_elements = await page.query_selector_all('div.product-head > a[href]')
-                print(f"DEBUG: Found {len(link_elements)} link elements")
+                # DEBUG: Let's see what selectors are available on the first product
+                if product_elements:
+                    first_product = product_elements[0]
+                    # Try to get all text content to see what's available
+                    all_text = await first_product.inner_text()
+                    print(f"DEBUG: First product full text: {all_text}")
+                
+                    # Try different selectors to find the full title
+                    test_selectors = [
+                        'span.ellip-line',
+                        '.product-title',
+                        '.name',
+                        'h2',
+                        'h3',
+                        'a',
+                        'div.product-head',
+                        'div.product-head a'
+                    ]
+                
+                    for selector in test_selectors:
+                        element = await first_product.query_selector(selector)
+                        if element:
+                            text = await element.inner_text()
+                            print(f"DEBUG: Selector '{selector}' gives: {text.strip()[:100]}")
             
                 product_links = []
-                for link in link_elements:
+                skipped_count = 0
+            
+                # Process each product element individually
+                for product in product_elements:
                     try:
-                        href = await link.get_attribute('href')
-                        if href:
-                            full_url = urljoin(self.base_domain, href)
-                            product_links.append(full_url)
+                        # Try multiple selectors to get the FULL title
+                        title_text = ""
+                        title_selectors = [
+                            'div.product-head a',  # This might contain the full title
+                            'span.ellip-line',
+                            '.product-title',
+                            '.name',
+                            'h2',
+                            'h3',
+                            'a[href]'
+                        ]
+                    
+                        for selector in title_selectors:
+                            title_element = await product.query_selector(selector)
+                            if title_element:
+                                text = await title_element.inner_text()
+                                if text and len(text.strip()) > 5:  # More than just "(2.9GHz)"
+                                    title_text = text.strip()
+                                    break
+                    
+                        # If we still have a short title, get the full link text
+                        if not title_text or len(title_text) < 10:
+                            link_element = await product.query_selector('a[href]')
+                            if link_element:
+                                title_text = await link_element.inner_text()
+                                title_text = title_text.strip()
+                    
+                        print(f"DEBUG: Extracted title: {title_text}")
+                    
+                        # Check if product should be filtered by keywords
+                        if title_text:
+                            temp_product_data = {'title': title_text, 'description': ''}
+                            if self._should_filter_by_keywords(temp_product_data):
+                                print(f'Skipped product "{title_text}" because it matches exclusion keywords')
+                                skipped_count += 1
+                                continue  # Skip to next product
+                    
+                        # Get link
+                        link_element = await product.query_selector('div.product-head > a[href]')
+                        if not link_element:
+                            link_element = await product.query_selector('a[href]')
+                    
+                        if link_element:
+                            href = await link_element.get_attribute('href')
+                            if href:
+                                full_url = urljoin(self.base_domain, href)
+                                product_links.append(full_url)
+                                print(f"DEBUG: Added product link for: {title_text}")
+                            
                     except Exception as e:
-                        print(f"DEBUG: Error processing link: {e}")
+                        print(f"DEBUG: Error processing product: {e}")
                         continue
             
-                print(f"DEBUG: Total Ardes product links found: {len(product_links)}")
-            
+                print(f"DEBUG: Total Ardes product links found: {len(product_links)} (skipped {skipped_count} products)")
+        
                 if product_links:
                     unique_links = list(dict.fromkeys(product_links))
                     if len(product_links) != len(unique_links):
@@ -126,10 +201,10 @@ class ArdesScraper(AsyncPlaywrightBaseScraper):
                         print(f"DEBUG: Retrying in {2 * (attempt + 1)} seconds...")
                         await asyncio.sleep(2 * (attempt + 1))  
                         continue
-            
+        
             except Exception as e:
                 print(f"DEBUG: Attempt {attempt + 1} failed for {page_url}: {e}")
-            
+        
                 if attempt < 2: 
                     print(f"DEBUG: Retrying in {2 * (attempt + 1)} seconds...")
                     await asyncio.sleep(2 * (attempt + 1))  
@@ -139,7 +214,7 @@ class ArdesScraper(AsyncPlaywrightBaseScraper):
                     import traceback
                     traceback.print_exc()
                     return []
-    
+
         return []
     
     async def _extract_product_data(self, page: Page, product_url: str) -> Optional[Dict[str, Any]]:
