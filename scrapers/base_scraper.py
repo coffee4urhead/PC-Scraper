@@ -540,7 +540,7 @@ class AsyncPlaywrightBaseScraper(ABC):
         pass
 
     @abstractmethod
-    def _construct_page_url(self, base_url, search_term, page):
+    def _construct_page_url(self, base_url, search_term):
         """Construct the URL for a specific page number"""
         pass
 

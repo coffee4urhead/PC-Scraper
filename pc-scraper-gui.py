@@ -29,9 +29,12 @@ def resource_path(relative_path):
     
     return os.path.join(base_path, relative_path)
 
-# need to reimplement classes from pc_tech_scraper down to the last
+# need to reimplement classes from techno_mall_scraper down to the last
 # need to reimplement the stop logic to not clear out the scraper when the person chooses to scrape again
 # need to add exclusions after someone selected the wrong scraper for the website they dont want
+# need to fix the unknown started scraping issue
+# need to fix the progress bar not updating issue
+# implement excel data reading for the historical data comparisons
 
 class GUI(ctk.CTk):
     def __init__(self):

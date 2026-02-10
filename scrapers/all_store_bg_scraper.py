@@ -8,7 +8,7 @@ class AllStoreScraper(AsyncPlaywrightBaseScraper):
         self.base_url = "https://allstore.bg/"
         self.current_page = 1
         self.update_gui_callback = update_gui_callback
-        self.website_that_is_scraped = "Allstore.bg"
+        self.website_that_is_scraped = "AllStore.bg"
 
     def _get_base_url(self, search_term):
         """Generate clean search URL without restrictive parameters"""
@@ -125,7 +125,7 @@ class AllStoreScraper(AsyncPlaywrightBaseScraper):
                 'price': price,
                 'url': product_url,
                 'currency': self.website_currency,
-                'source': 'Allstore.bg',  
+                'source': 'AllStore.bg',  
                 'source_currency': self.website_currency,
                 'page': self.current_page
             }

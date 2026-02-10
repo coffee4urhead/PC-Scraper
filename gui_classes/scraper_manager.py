@@ -39,7 +39,7 @@ class ScraperManager:
             "Optimal Computers": "BGN",
             "Xtreme.bg": "BGN",
             "CyberTrade.bg": "BGN",
-            "PcTech.bg": "BGN",
+            "PcTech.bg": "EUR",
             "Pro.bg": "BGN",
             "TechnoMall.bg": "BGN",
             "TehnikStore.bg": "BGN",
