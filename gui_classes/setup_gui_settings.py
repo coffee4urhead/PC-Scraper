@@ -49,13 +49,11 @@ class SettingsTabSetup:
     def _setup_look_and_feel_panel(self, tab):
         self.look_and_feel_panel = ctk.CTkFrame(
             tab, 
-            width=400,
-            height=700,
             fg_color="#1A1A1A",  
             border_width=2,
             border_color=("#FFFFFF", "#1A1A1A"),
         )
-        self.look_and_feel_panel.place(x=770, y=35, relwidth=0.33, relheight=0.9)
+        self.look_and_feel_panel.place(relx=0.65, rely=0.05, relwidth=0.33, relheight=0.9)
 
         look_and_feel_label = ctk.CTkLabel(
             self.look_and_feel_panel,
@@ -74,17 +72,15 @@ class SettingsTabSetup:
             font=(self.master.preferred_font, 20, "bold"),
             fg_color="transparent"
         )
-        font_label.place(relx=0.1, rely=0.1)
+        font_label.place(relx=0.4, rely=0.1,)
 
         font_frame = ctk.CTkFrame(
             tab, 
-            width=400, 
-            height=700, 
             fg_color="#1A1A1A",
             border_width=2,
             corner_radius=12,
         )
-        font_frame.place(x=790, y=130, relwidth=0.3, relheight=0.23)
+        font_frame.place(relx=0.67, rely=0.2, relwidth=0.3, relheight=0.23)
 
         font_family_label = ctk.CTkLabel(
             font_frame,
@@ -357,7 +353,7 @@ class SettingsTabSetup:
         
         self.secondary_color_btn = ctk.CTkButton(
             color_picker_frame,
-            text="Pick Secondary", 
+            text="Pick Secondary",
             font=(self.master.preferred_font, self.master.preferred_size),
             width=100,
             fg_color=("#3B8ED0", "#1F6AA5"),

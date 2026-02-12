@@ -41,15 +41,13 @@ class ContentSetup:
         
         self.master.left_scrape_button = ctk.CTkButton(
             self.master.left_panel,
-            width=40,
-            height=40,
             corner_radius=20,
             font=(self.master.preferred_font, 30),
             image=search_ctk_image,
             text='' if search_ctk_image else 'Search',
             command=self._get_scrape_callback()
         )
-        self.master.left_scrape_button.place(relx=0.48, rely=0.1)
+        self.master.left_scrape_button.place(relx=0.48, rely=0.095, relwidth=0.1, relheight=0.08)
         
         folder_icon_path = resource_path("images/Uriy1966-Steel-System-Library-Mac.64.png")
         try:
@@ -57,15 +55,13 @@ class ContentSetup:
             folder_ctk_image = ctk.CTkImage(
                 light_image=folder_pil_image,
                 dark_image=folder_pil_image,
-                size=(30, 30),
+                size=(40, 37),
             )
         except:
             folder_ctk_image = None
         
         self.master.left_select_folder_button = ctk.CTkButton(
             self.master.left_panel,
-            width=40,
-            height=40,
             corner_radius=10,
             fg_color=("#FFFFFF", "#454345"),
             hover_color=("#CBC7C7", "#2E2C2E"),
@@ -73,7 +69,7 @@ class ContentSetup:
             text='' if folder_ctk_image else 'Folder',
             command=self._get_folder_callback()
         )
-        self.master.left_select_folder_button.place(relx=0.9, rely=0.1)
+        self.master.left_select_folder_button.place(relx=0.88, rely=0.095, relwidth=0.09, relheight=0.08)
         
         options_icon_path = resource_path("images/gears.png")
         try:
@@ -96,7 +92,7 @@ class ContentSetup:
             image=gearwheel_image_ctk,
             command=self._get_options_callback()
         )
-        self.master.options_menu.place(relx=0.9, rely=0.9)
+        self.master.options_menu.place(relx=0.89, rely=0.89, relwidth=0.1, relheight=0.09)
         
         audio_icon_path_off = resource_path("images/no-sound.png")
         audio_icon_path_on = resource_path("images/sound.png")
@@ -121,15 +117,13 @@ class ContentSetup:
         
         self.mute_audio_btn = ctk.CTkButton(
             self.master.left_panel,
-            width=40,
-            height=40,
             fg_color=("#E79CEE", "#C251CC"),
             hover_color=("#E7A2EE", "#CF55DA"),
             text='' if self.audio_image_ctk_off else 'Music',
             image=self.audio_image_ctk_off,
             command=self._get_audio_callback()
         )
-        self.mute_audio_btn.place(relx=0.8, rely=0.9)
+        self.mute_audio_btn.place(relx=0.77, rely=0.89, relwidth=0.1, relheight=0.09)
     
     def _get_scrape_callback(self):
         """Get the scrape button callback"""
@@ -196,14 +190,12 @@ class ContentSetup:
 
         self.master.right_console = ctk.CTkTextbox(
             self.master.right_panel,
-            width=350,
-            height=500,
             fg_color=("#FFFFFF", "#000000"),
             text_color='green',
             wrap='word',
             font=(self.master.preferred_font, self.master.preferred_size)
         )
-        self.master.right_console.place(relx=0.05, rely=0.1)
+        self.master.right_console.place(relx=0.05, rely=0.08, relwidth=0.9, relheight=0.9)
     
     def _add_left_title(self):
         left_title = ctk.CTkLabel(
@@ -242,22 +234,20 @@ class ContentSetup:
     def _add_search_controls(self):
         self.master.left_entry = ctk.CTkEntry(
             self.master.left_panel, 
-            width=300, 
-            height=40, 
             corner_radius=20, 
             text_color=("black", "white"),
             placeholder_text='Enter your desired part here ...',
             placeholder_text_color=("#666666", "#888888"),
             font=(self.master.preferred_font, self.master.preferred_size)
         )
-        self.master.left_entry.place(relx=0.05, rely=0.1)
+        self.master.left_entry.place(relx=0.05, rely=0.1, relwidth=0.4, relheight=0.075)
 
         self.master.left_part_select = ctk.CTkComboBox(
             self.master.left_panel,
-            width=170,  
-            height=40,
             fg_color=("#FFFFFF", "#1A1A1A"),
             values=self.part_options,
+            width=170,  
+            height=40,
             corner_radius=20,  
             text_color=("black", "white"),  
             dropdown_fg_color=("#FFFFFF", "#1A1A1A"),  
@@ -268,8 +258,6 @@ class ContentSetup:
         )
         self.master.left_part_select.set("GPU")
         self.master.left_part_select.place(relx=0.6, rely=0.02)
-
-        # here we create the multi-choice component based on the website values we can choose from
 
         self.master.left_website_select = ctk.CTkComboBox(
             self.master.left_panel,
@@ -309,27 +297,41 @@ class ContentSetup:
     def _add_description_frame(self):
         left_frame_label_container = ctk.CTkFrame(
             self.master.left_panel, 
-            width=600, 
-            height=400,
-            fg_color=("#DBD8D8", "#232323"),
-            border_width=2,
-            border_color=("#FFFFFF", "#1A1A1A"),
-            corner_radius=30
+                fg_color=("#DBD8D8", "#232323"),
+                border_width=2,
+                border_color=("#FFFFFF", "#1A1A1A"),
+                corner_radius=30
         )
-        left_frame_label_container.place(relx=0.09, rely=0.4)
+        left_frame_label_container.place(
+            relx=0.05, 
+            rely=0.33, 
+            relwidth=0.9, 
+            relheight=0.55
+        )
 
         left_label_container = ctk.CTkFrame(
             left_frame_label_container,
             fg_color="transparent"
         )
-        left_label_container.pack(fill='both', expand=True, padx=100, pady=100)
+        left_label_container.place(
+            relx=0.05,        
+            rely=0.05,     
+            relwidth=0.9,     
+            relheight=0.9     
+        )
 
         left_label_description = ctk.CTkLabel(
             left_label_container,
             text='Lorem Ipsum is simply dummy text of the printing and typesetting industry...',
-            anchor='w',
+            anchor='nw',      
             font=(self.master.preferred_font, self.master.preferred_size),
             justify='left',
-            wraplength=450,  
+            text_color=("#000000", "#FFFFFF"),
+            wraplength=420  
         )
-        left_label_description.pack(fill='both', expand=True, padx=10, pady=10)
+        left_label_description.place(
+            relx=0,          
+            rely=0,          
+            relwidth=1,       
+            relheight=1       
+        )
