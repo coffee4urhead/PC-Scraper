@@ -16,7 +16,23 @@ class ScraperContainer:
         self.browser = None
         self._playwright = None  
         self._contexts = {}
-        self.context = None 
+        self.context = None
+        self.total_products_discovered = 0
+        self.total_products_collected = 0
+        self.total_expected_products = 0
+        self.active_scrapers_count = 0
+
+    def update_global_totals(self):
+        """Recalculate global totals from all scrapers"""
+        self.total_products_collected = 0
+        self.total_expected_products = 0
+        self.active_scrapers_count = 0
+    
+        for scraper in self.scraper_list:
+            if scraper.is_running():
+                self.active_scrapers_count += 1
+                self.total_products_collected += getattr(scraper, 'products_collected', 0)
+                self.total_expected_products += getattr(scraper, 'total_expected_products', 0)
 
     async def start_shared_browser(self):
         """Start shared browser instances for all scrapers"""
@@ -229,19 +245,23 @@ class ScraperContainer:
         status = {}
         for scraper in self.scraper_list:
             scraper_name = scraper.__class__.__name__
-            
+        
             if hasattr(scraper, 'website_that_is_scraped'):
                 website_key = scraper.website_that_is_scraped
             else:
                 website_key = scraper_name
-            
+        
+            website_results = self._all_results.get(website_key, [])
+        
             status[scraper_name] = {
                 'running': scraper.is_running() if hasattr(scraper, 'is_running') else False,
                 'progress': getattr(scraper, 'current_progress', 0),
                 'completed_tasks': getattr(scraper, 'completed_tasks', 0),
-                'total_tasks': getattr(scraper, 'total_tasks', 0),
+                'total_tasks': getattr(scraper, 'total_pages_to_scrape', 0),
                 'website': website_key,
-                'products_collected': len(self._all_results.get(website_key, []))
+                'products_collected': len(website_results),
+                'total_products_found': getattr(scraper, 'total_products_found', 0),
+                'products_per_page': getattr(scraper, 'products_per_page', {})
             }
         return status
         

@@ -21,6 +21,13 @@ class AsyncPlaywrightBaseScraper(ABC):
         self.gui_callback = gui_callback
         
         self.max_concurrent_pages = 2
+
+        self.products_collected = 0
+        self.total_expected_products = 0 
+    
+        self.products_found_per_page = {}
+        self.expected_products_per_page = {}
+
         self.max_concurrent_products = 3
         self.delay_between_requests = 2
         self.random_delay_multiplier = 1.5
@@ -165,7 +172,19 @@ class AsyncPlaywrightBaseScraper(ABC):
             self._stop_event.clear()
             self._running = True
             self._active_tasks = []
+            self.current_progress = 0
+            self.completed_tasks = 0
+            self.total_pages_to_scrape = 0
+            self.total_products_found = 0
+            self.products_per_page = {}
             
+            self._update_gui({
+                'type': 'product_count',
+                'total_found': 0,
+                'page_products': 0,
+                'page_num': 0,
+                'scraper_name': self.__class__.__name__
+            })
             self._update_gui({'type': 'start', 'scraper_name' : self.__class__.__name__, 'message': 'Starting async scrape'})
             
             optimal_workers = self.cpu_manager.get_optimal_worker_count()
@@ -208,21 +227,24 @@ class AsyncPlaywrightBaseScraper(ABC):
     async def _distributed_scrape(self, search_term: str, max_pages: int, num_workers: int) -> List[Dict[str, Any]]:
         """Distribute scraping across multiple processes/cores with stop support"""
         
-        pages_per_worker = 2
         worker_tasks = []
-    
+        self.total_pages_to_scrape = 0
+
         for worker_id in range(1):
-            start_page = worker_id * pages_per_worker + 1
-            end_page = min((worker_id + 1) * pages_per_worker, max_pages)
+            start_page = worker_id * self.max_concurrent_pages + 1
+            end_page = min((worker_id + 1) * self.max_concurrent_pages, max_pages)
             
             if start_page <= end_page:
+                pages_in_this_worker = end_page - start_page + 1
+                self.total_pages_to_scrape += pages_in_this_worker
+
                 task = asyncio.create_task(
                     self._worker_scrape(search_term, start_page, end_page, worker_id)
                 )
                 task._shielded = True
                 worker_tasks.append(task)
                 self._active_tasks.append(task)
-        
+                print(f"📊 Total pages to scrape: {self.total_pages_to_scrape}")
         try:
             worker_results = await asyncio.gather(*worker_tasks, return_exceptions=True)
         
@@ -275,19 +297,20 @@ class AsyncPlaywrightBaseScraper(ABC):
                 page_results = await asyncio.shield(self._scrape_single_page_async(
                     context, search_term, page_num, worker_id
                 ))
-                results.extend(page_results)
-            
+
+                if page_results:
+                    results.extend(page_results)
+
                 if self._stop_requested:
                     break
-            
-                if not self._stop_requested:
-                    self.completed_tasks += 1
-                    if self.total_tasks > 0:
-                        progress = int((self.completed_tasks / self.total_tasks) * 100)
-                        if progress > self.current_progress:
-                            self.current_progress = progress
-                            self._update_gui({'type': 'progress', 'value': progress})
-            
+                
+                self._update_gui({
+                    'type': 'product_progress',
+                    'collected': self.products_collected,  
+                    'total_expected': self.total_expected_products,
+                    'page_num': page_num,
+                    'scraper_name': self.__class__.__name__
+                })
                 if not self._stop_requested:
                     try:
                         await asyncio.wait_for(
@@ -307,7 +330,6 @@ class AsyncPlaywrightBaseScraper(ABC):
             return results
 
     async def _scrape_single_page_async(self, context, search_term: str, page_num: int, worker_id: int) -> List[Dict[str, Any]]:
-        self._update_gui({"type": "progress", 'data': page_num})
         if self._stop_requested:
             return []
 
@@ -339,7 +361,19 @@ class AsyncPlaywrightBaseScraper(ABC):
             await asyncio.sleep(random.uniform(1.5, 3.0))
 
             product_links = await self._extract_product_links_async(links_page, page_url)
-            
+            products_on_page = len(product_links)
+
+            self.products_per_page[page_num] = products_on_page
+
+            self.total_expected_products = sum(self.products_per_page.values())
+
+            self._update_gui({
+                'type': 'total_updated',
+                'total_expected': self.total_expected_products,  
+                'page_num': page_num,
+                'page_products': products_on_page,
+                'scraper_name': self.__class__.__name__
+            })
             await links_page.evaluate("window.scrollTo(0, Math.random() * 500)")
             await asyncio.sleep(random.uniform(0.5, 1.5))
             await links_page.close()
@@ -446,7 +480,16 @@ class AsyncPlaywrightBaseScraper(ABC):
             product_data['url'] = product_url
 
             if product_data:
+                self.products_collected += 1
                 self._update_gui({"type": "product", 'data': product_data})
+
+                self._update_gui({
+                    'type': 'product_progress',
+                    'collected': self.products_collected,
+                    'total_expected': self.total_expected_products,
+                    'product_title': product_data.get('title', '')[:30],
+                    'scraper_name': self.__class__.__name__
+                })
                 return product_data
 
             return None

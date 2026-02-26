@@ -33,7 +33,6 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 # only Senetic needs fixing 
-# need to fix the progress bar not updating issue
 
 class GUI(ctk.CTk):
     def __init__(self):
@@ -543,21 +542,87 @@ class GUI(ctk.CTk):
             data_type = data.get('type', 'unknown')
             scraper_name = data.get('scraper_name', 'Unknown')
             scraper_id = data.get('scraper_id', '')
-    
-            if data_type == 'progress':
-                progress_value = data.get('value', 0)
-                if hasattr(self, 'scraper_container') and self.scraper_container:
-                    status = self.scraper_container.get_scraper_status()
-                    if status:
-                        total_progress = sum(info.get('progress', 0) for info in status.values())
-                        avg_progress = total_progress / len(status)
-                        self.progress_bar.set(avg_progress / 100)
             
+            if data_type == 'total_updated':
+                total_expected = data.get('total_expected', 0)
+                page_num = data.get('page_num', 0)
+                page_products = data.get('page_products', 0)
+                scraper_name = data.get('scraper_name', 'Unknown')
+    
+                print(f"📊 {scraper_name}: Page {page_num} added {page_products} products. Total target: {total_expected}")
+    
+                if hasattr(self, 'scraper_product_counts'):
+                    if scraper_name in self.scraper_product_counts:
+                        self.scraper_product_counts[scraper_name]['total'] = total_expected
+                    else:
+                        self.scraper_product_counts[scraper_name] = {
+                            'collected': 0,
+                            'total': total_expected
+                        }
+        
+                    total_expected_all = sum(s['total'] for s in self.scraper_product_counts.values())
+        
+                    self.status_label.configure(
+                            text=f"{scraper_name}: Now targeting {total_expected} products (Overall: {total_expected_all})",
+                            text_color="blue"
+                    )
+            elif data_type == 'product_progress':
+                collected = data.get('collected', 0)
+                total_expected = data.get('total_expected', 0)
+                page_num = data.get('page_num', 0)
+                page_products = data.get('page_products', 0)
+                scraper_name = data.get('scraper_name', 'Unknown')
+    
+                if hasattr(self, 'scraper_container') and self.scraper_container:
+                    total_collected = 0
+                    total_expected_all = 0
+        
+                    if hasattr(self, 'scraper_product_counts'):
+                        for name, counts in self.scraper_product_counts.items():
+                            total_collected += counts.get('collected', 0)
+                            total_expected_all += counts.get('total', 0)
+        
+                    if not hasattr(self, 'scraper_product_counts'):
+                            self.scraper_product_counts = {}
+        
+                    self.scraper_product_counts[scraper_name] = {
+                        'collected': collected,
+                        'total': total_expected
+                    }
+        
+                    total_collected = sum(s['collected'] for s in self.scraper_product_counts.values())
+                    total_expected_all = sum(s['total'] for s in self.scraper_product_counts.values())
+        
+                    self.scraper_container.total_products_collected = total_collected
+                    self.scraper_container.total_expected_products = total_expected_all
+        
+                    if total_expected_all > 0:
+                        progress_text = f"Overall: {total_collected}/{total_expected_all} products"
+                        progress_text += f" (last: {scraper_name}: {collected}/{total_expected})"
+                    else:
+                        progress_text = f"Overall: {total_collected} products found"
+        
+                    if page_products > 0:
+                        progress_text += f" - Page {page_num}: +{page_products}"
+        
+                    self.status_label.configure(
+                        text=progress_text,
+                        text_color="blue"
+                    )
+        
+                    if total_expected_all > 0:
+                        percentage = (total_collected / total_expected_all) * 100
+                        self.progress_bar.set(percentage / 100)
+    
+            elif data_type == 'total_products_set':
+                total = data.get('total', 0)
+                scraper_name = data.get('scraper_name', 'Unknown')
+                print(f"📊 {scraper_name}: Total expected products = {total}")
+        
                 self.status_label.configure(
-                    text=f"{scraper_name}: {progress_value}% complete",
+                    text=f"{scraper_name}: Starting scrape (target: {total} products)",
                     text_color="blue"
                 )
-
             elif data_type == 'product':
                 product = data.get('data', {})
                 if product:
