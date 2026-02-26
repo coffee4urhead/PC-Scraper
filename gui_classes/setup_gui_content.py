@@ -18,7 +18,7 @@ class ContentSetup:
                               'PIC.bg', 'jarcomputers.com', 'Desktop.bg', 
                               'Amazon.com', 'Amazon.de']
         self.selected = []
-        
+
     def _add_action_buttons(self):
         """Add action buttons to the left panel"""
         def resource_path(relative_path): 
@@ -153,7 +153,19 @@ class ContentSetup:
             def default_callback():
                 print("Options button clicked")
             return default_callback
-    
+        
+    def _get_scraper_manager_list_callback(self):
+        """Get the callback for opening the scraper manager window"""
+        if hasattr(self.master, 'get_scraper_manager_window'):
+            return self.master.get_scraper_manager_window
+        elif hasattr(self.master, 'gui') and hasattr(self.master.gui, 'get_scraper_manager_window'):
+            return self.master.gui.get_scraper_manager_window
+        else:
+            print("ERROR: Could not find get_scraper_manager_window method")
+            def dummy_callback():
+                print("Manager window method not found")
+            return dummy_callback
+
     def _get_audio_callback(self):
         """Get the audio button callback"""
         def toggle_audio():
@@ -275,6 +287,17 @@ class ContentSetup:
         )
         self.master.left_website_select.set('Desktop.bg')
         self.master.left_website_select.place(relx=0.6, rely=0.1)
+
+        self.manage_scrapers_button = ctk.CTkButton(
+            self.master.left_panel,
+            text="Manage Scrapers",
+            corner_radius=20,
+            fg_color=("#E79CEE", "#C251CC"),
+            hover_color=("#E7A2EE", "#CF55DA"),
+            command=self._get_scraper_manager_list_callback(),
+            font=(self.master.preferred_font, 15)
+        )
+        self.manage_scrapers_button.place(relx=0.1, rely=0.89, relwidth=0.3, relheight=0.09)
     
     def _add_progress_bar(self):
         self.master.progress_bar = ctk.CTkProgressBar(

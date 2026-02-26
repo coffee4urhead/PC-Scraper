@@ -13,7 +13,10 @@ from scrapers.scraper_container_class import ScraperContainer
 from FileCreators import JSON_creator as jsc
 from FileCreators import CSV_creator as cs
 from FileCreators import TableMaker as exc
+
 from windows.scraper_options_window import ScraperOptionsWindow
+from windows.scraper_manager_window import ScraperManagerWindow
+
 from gui_classes.setup_gui_main import SetupGUI
 from currency_converter import RealCurrencyConverter
 from scrapers.desktop_bg_scraper import DesktopScraper
@@ -30,11 +33,7 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 # only Senetic needs fixing 
-# need to reimplement the stop logic to not clear out the scraper when the person chooses to scrape again
-# need to add exclusions after someone selected the wrong scraper for the website they dont want
-# need to fix the unknown started scraping issue
 # need to fix the progress bar not updating issue
-# implement excel data reading for the historical data comparisons
 
 class GUI(ctk.CTk):
     def __init__(self):
@@ -136,7 +135,10 @@ class GUI(ctk.CTk):
         self.selected_websites = []
         self.scraper = None
         self.all_products = []
+        self.active_chips = {}  
+        self.instantiated_scrapers = {}
         self.scraper_options = None
+        self.scraper_manager_list = None
         self.setup_gui()
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
         self._on_website_selection = self._handle_website_selection
@@ -186,6 +188,9 @@ class GUI(ctk.CTk):
 
         if hasattr(self, 'options_menu'):
             self.options_menu.configure(command=self.get_scraper_windows_options)
+        
+        if hasattr(self, 'scrapers_manager_list_button'):
+            self.scrapers_manager_list_button.configure(command=self.get_scraper_manager_window)
     
     def setup_gui(self):
         """Setup the entire GUI using the new modular class"""
@@ -418,6 +423,60 @@ class GUI(ctk.CTk):
         else:
             self.scraper_options.focus()
     
+    def _deactivate_scraper(self, website):
+        """Deactivate a scraper and remove its chip"""
+        print(f"Deactivating scraper for {website}")
+    
+        scraper_to_remove = None
+        if self.scraper_container and self.scraper_container.scraper_list:
+            for scraper in self.scraper_container.scraper_list:
+                scraper_website = getattr(scraper, 'website_that_is_scraped', scraper.__class__.__name__)
+                if scraper_website == website:
+                    scraper_to_remove = scraper
+                    break
+    
+        if scraper_to_remove:
+            self.scraper_container.scraper_list.remove(scraper_to_remove)
+        
+            scraper_id = id(scraper_to_remove)
+            if scraper_id in self.scraper_container._active_scrapers:
+                del self.scraper_container._active_scrapers[scraper_id]
+
+            if website in self.instantiated_scrapers:
+                del self.instantiated_scrapers[website]
+            
+            if website in self.selected_websites:
+                self.selected_websites.remove(website)
+            if hasattr(scraper_to_remove, 'stop_scraping'):
+                scraper_to_remove.stop_scraping()
+        
+            if website in self.instantiated_scrapers:
+                del self.instantiated_scrapers[website]
+        
+            print(f"✅ Removed scraper from container")
+        else:
+            print(f"❌ Could not find scraper for {website} in container")
+    
+        if website in self.active_chips:
+            self.active_chips[website].destroy()
+            del self.active_chips[website]
+            print(f"✅ Removed chip for {website}")
+    
+        if len(self.instantiated_scrapers) == 0:
+            if hasattr(self, 'left_website_select'):
+                self.left_website_select.configure(
+                    border_color=[self.primary_color, self.secondary_color],
+                    border_width=1
+                )
+    
+        print(f"✅ Deactivated scraper for {website}")
+
+    def get_scraper_manager_window(self):
+        if self.scraper_manager_list is None or not self.scraper_manager_list.winfo_exists():
+            self.scraper_manager_list = ScraperManagerWindow(self, self.scraper_container)
+        else:
+            self.scraper_manager_list.focus()
+
     def _update_widgets_font(self, widgets, recursive=False):
         for widget in widgets:
             if recursive:

@@ -118,6 +118,7 @@ class ScraperManager:
             print(f"DEBUG: Scraper initialization failed: {e}")
             self.master.update_gui(f"Error creating scraper: {str(e)}", level="error")
             return None
+        
     def _apply_settings_to_scraper(self, scraper):
         """Apply settings directly to an individual scraper"""
         if not scraper or not self.settings_manager:

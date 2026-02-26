@@ -132,15 +132,27 @@ class AsyncPlaywrightBaseScraper(ABC):
         return random.choice(self.user_agents)
     
     def stop_scraping(self):
-        """Stop all running scrapers"""
-        if self.scraper_container:
-            stopped_count = self.scraper_container.stop_all_scrapers()
-            self.update_gui({
-                'type': 'status',
-                'message': f'Stopped {stopped_count} scrapers'
-            })
-            return stopped_count
-        return 0
+        """Stop this individual scraper instance"""
+        print(f"🛑 Stopping scraper: {self.__class__.__name__}")
+    
+        self._stop_requested = True
+        self._running = False
+
+        if hasattr(self, '_stop_event'):
+            self._stop_event.set()
+    
+        if hasattr(self, '_active_tasks') and self._active_tasks:
+            for task in self._active_tasks:
+                if not task.done():
+                    task.cancel()
+            self._active_tasks.clear()
+    
+        self._update_gui({
+            'type': 'status',
+            'message': f'Stopped scraper: {self.__class__.__name__}'
+        })
+    
+        return 1
     
     def is_running(self):
         """Check if scraping is running"""
@@ -154,7 +166,7 @@ class AsyncPlaywrightBaseScraper(ABC):
             self._running = True
             self._active_tasks = []
             
-            self._update_gui({'type': 'start', 'message': 'Starting async scrape'})
+            self._update_gui({'type': 'start', 'scraper_name' : self.__class__.__name__, 'message': 'Starting async scrape'})
             
             optimal_workers = self.cpu_manager.get_optimal_worker_count()
             logger.info(f"Using {optimal_workers} workers for scraping")

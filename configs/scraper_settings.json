@@ -9,7 +9,7 @@
     "min_price": "",
     "max_price": "",
     "exclude_keywords": "intel i5-13500K, intel i5-13500",
-    "output_format": "JSON",
+    "output_format": "CSV",
     "debug_logs": 0,
     "auto_close": 0,
     "first_website_for_comparison": "Ardes.bg",
@@ -19,8 +19,8 @@
         "preferred_size": "20",
         "preferred_theme": "System",
         "preferred_language": "ja-JP",
-        "primary_color": "#2E8B57",
-        "secondary_color": "#228B22",
+        "primary_color": "#FF6B6B",
+        "secondary_color": "#FF4757",
         "save_folder": "/home/demian/Desktop/ScrapeProducts"
     }
 }
