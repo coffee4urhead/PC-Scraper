@@ -48,9 +48,9 @@ class SettingsTabSetup:
     
     def _setup_look_and_feel_panel(self, tab):
         self.look_and_feel_panel = ctk.CTkFrame(
-            tab, 
-            fg_color="#1A1A1A",  
+            tab,   
             border_width=2,
+            fg_color=("#F5DBBD", "#1A1A1A"),
             border_color=("#FFFFFF", "#1A1A1A"),
         )
         self.look_and_feel_panel.place(relx=0.65, rely=0.05, relwidth=0.33, relheight=0.9)
@@ -58,9 +58,9 @@ class SettingsTabSetup:
         look_and_feel_label = ctk.CTkLabel(
             self.look_and_feel_panel,
             text="Look and Feel", 
-            text_color="white",
+            text_color=("black", "white"),
             font=(self.master.preferred_font, 20, "bold"),
-            fg_color="transparent"
+            fg_color=("#F5DBBD", "#1A1A1A"),
         )
         look_and_feel_label.place(relx=0.35, rely=0.02)
     
@@ -68,15 +68,15 @@ class SettingsTabSetup:
         font_label = ctk.CTkLabel(
             self.look_and_feel_panel,
             text="Font settings", 
-            text_color="white",
+            text_color=("black", "white"),
             font=(self.master.preferred_font, 20, "bold"),
-            fg_color="transparent"
+            fg_color=("#F5DBBD", "#1A1A1A"),
         )
         font_label.place(relx=0.4, rely=0.1,)
 
         font_frame = ctk.CTkFrame(
             tab, 
-            fg_color="#1A1A1A",
+            fg_color=("#F5DBBD", "#1A1A1A"),
             border_width=2,
             corner_radius=12,
         )
@@ -85,9 +85,9 @@ class SettingsTabSetup:
         font_family_label = ctk.CTkLabel(
             font_frame,
             text="Font Family", 
-            text_color="white",
+            text_color=("black", "white"),
             font=(self.master.preferred_font, 15, "bold"),
-            fg_color="transparent"
+            fg_color=("#F5DBBD", "#1A1A1A"),
         )
         font_family_label.place(relx=0.1, rely=0.1)
         
@@ -124,7 +124,7 @@ class SettingsTabSetup:
         language_label = ctk.CTkLabel(
             font_frame,
             text="Language", 
-            text_color="white",
+            text_color=("black", "white"),
             font=(self.master.preferred_font, 15, "bold"),
             fg_color="transparent"
         )
@@ -161,7 +161,7 @@ class SettingsTabSetup:
         font_size_label = ctk.CTkLabel(
             font_frame,
             text="Font Size", 
-            text_color="white",
+            text_color=("black", "white"),
             font=(self.master.preferred_font, 15, "bold"),
             fg_color="transparent"
         )
@@ -194,9 +194,9 @@ class SettingsTabSetup:
             tab, 
             width=400,
             height=1000,
-            fg_color=("#1A1A1A", "#2D2D2D"),  
+            fg_color=("#F5DBBD", "#1A1A1A"),  
             border_width=2,
-            border_color=("#3A3A3A", "#4A4A4A"),
+            border_color=("#1A1A1A", "#1A1A1A"),
             corner_radius=15
         )
         self.customize_ui_colors_dialog.place(x=25, y=35, relwidth=0.6, relheight=0.9)
@@ -246,7 +246,7 @@ class SettingsTabSetup:
             hover_color=("#E0E0E0", "#C0C0C0"),
             border_width=2,
             border_color=("#3B8ED0", "#1F6AA5"),
-            command=lambda: self.change_theme("Light")
+            command=lambda: self.master.set_window_background("light")
         )
         self.light_theme_btn.pack(side="left", padx=(0, 10))
         
@@ -259,7 +259,7 @@ class SettingsTabSetup:
             hover_color=("#3B3B3B", "#2A2A2A"),
             border_width=2,
             border_color=("#3B8ED0", "#1F6AA5"),
-            command=lambda: self.change_theme("Dark")
+            command=lambda: self.master.set_window_background("dark")
         )
         self.dark_theme_btn.pack(side="left", padx=(0, 10))
         
@@ -272,7 +272,7 @@ class SettingsTabSetup:
             hover_color=("#357ABD", "#1A5A8A"),
             border_width=2,
             border_color=("#3B8ED0", "#1F6AA5"),
-            command=lambda: self.change_theme("System")
+            command=lambda: self.master.set_window_background("system")
         )
         self.system_theme_btn.pack(side="left")
         

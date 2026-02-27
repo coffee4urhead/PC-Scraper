@@ -18,7 +18,7 @@ class ScraperManagerWindow(ctk.CTkToplevel):
         
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
-        
+        self.configure(fg_color=("#F5DBBD", "#1A1A1A"),)
         self.scroll_frame = ctk.CTkScrollableFrame(self, width=480, height=700)
         self.scroll_frame.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
         
@@ -27,7 +27,8 @@ class ScraperManagerWindow(ctk.CTkToplevel):
     def _build_ui(self):
         """Build the UI elements inside the scrollable frame"""
         
-        active_frame = ctk.CTkFrame(self.scroll_frame)
+        active_frame = ctk.CTkFrame(self.scroll_frame,
+            fg_color=("#F5DBBD", "#1A1A1A"),)
         active_frame.pack(fill="x", pady=10, padx=10)
         
         ctk.CTkLabel(
@@ -40,13 +41,15 @@ class ScraperManagerWindow(ctk.CTkToplevel):
             for scraper in self.scraper_container.scraper_list:
                 website = getattr(scraper, 'website_that_is_scraped', scraper.__class__.__name__)
                 
-                scraper_frame = ctk.CTkFrame(active_frame)
+                scraper_frame = ctk.CTkFrame(
+                    active_frame,
+                    fg_color=("#F5DBBD", "#1A1A1A"))
                 scraper_frame.pack(fill="x", padx=20, pady=2)
                 
                 ctk.CTkLabel(
                     scraper_frame,
                     text=f"● {website}",
-                    text_color="#00FF00"
+                    text_color=("black", "white"),
                 ).pack(side="left", padx=10)
                 
                 ctk.CTkButton(
@@ -63,7 +66,7 @@ class ScraperManagerWindow(ctk.CTkToplevel):
                 text_color="gray"
             ).pack(pady=20)
         
-        available_frame = ctk.CTkFrame(self.scroll_frame)
+        available_frame = ctk.CTkFrame(self.scroll_frame, fg_color=("#F5DBBD", "#1A1A1A"),)
         available_frame.pack(fill="x", pady=10, padx=10)
         
         ctk.CTkLabel(
@@ -85,6 +88,7 @@ class ScraperManagerWindow(ctk.CTkToplevel):
                     btn = ctk.CTkButton(
                         available_frame,
                         text=f"+ {website}",
+                        text_color=("black", "white"),
                         command=lambda w=website: self._add_scraper(w),
                         fg_color="transparent",
                         border_width=1,

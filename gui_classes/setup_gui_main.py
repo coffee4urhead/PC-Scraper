@@ -94,7 +94,6 @@ class SetupGUI:
         
         print("GUI setup complete")
     
-    # made some mods here... (to be tested)
     def on_selection_instantiate(self, selected_website):
         """Handle website selection and scraper instantiation"""
         if hasattr(self.master, 'left_website_select'):
@@ -121,7 +120,6 @@ class SetupGUI:
             print(f"Added {selected_website} to selected websites")
             self.master.scraper_list.append(scraper)
         
-            # Update the scraper container
             if not self.master.scraper_container:
                 self.master.scraper_container = ScraperContainer(self.master.scraper_list)
             else:
@@ -164,11 +162,16 @@ class SetupGUI:
     def setup_info_tab(self, tab):
         """Setup the info tab"""
         info_label = ctk.CTkLabel(tab, text="Application Information", 
-                                  font=(self.master.preferred_font, 20, "bold"))
+                                  font=(self.master.preferred_font, 20, "bold"),
+                                              fg_color=("#F5DBBD", "#1A1A1A"),
+                                              padx=10, pady=10, corner_radius=10)
         info_label.pack(pady=20)
         
         info_text = ctk.CTkTextbox(tab, wrap="word", 
-                                   font=(self.master.preferred_font, self.master.preferred_size))
+                                   font=(self.master.preferred_font, self.master.preferred_size),
+                                               fg_color=("#F5DBBD", "#1A1A1A"),
+            border_color=("#F5DBBD", "#1A1A1A"))
+        
         info_text.pack(fill="both", expand=True, padx=20, pady=10)
         
         info_content = """
@@ -204,14 +207,16 @@ class SetupGUI:
     def setup_price_history_tab(self, tab):
         """Setup the price history comparison tab"""
         info_label = ctk.CTkLabel(tab, text="Price History Comparison", 
-                                  font=(self.master.preferred_font, 20, "bold"))
+                                  font=(self.master.preferred_font, 20, "bold"),
+                                              fg_color=("#F5DBBD", "#1A1A1A"),
+                                              padx=2, pady=2, corner_radius=10)
         info_label.pack(pady=20)
         
         self.master.price_comparison_panel = ctk.CTkFrame(
             tab, 
             width=500, 
             height=700,
-            fg_color=("#FFFFFF", "#1A1A1A"),
+            fg_color=("#F5DBBD", "#1A1A1A"),
             border_width=2,
         )
         self.master.price_comparison_panel.place(x=60, y=55, relwidth=0.9, relheight=0.9)
@@ -220,11 +225,11 @@ class SetupGUI:
             self.master.price_comparison_panel,
             width=170,  
             height=40,
-            fg_color=("#FFFFFF", "#1A1A1A"),
+            fg_color=("#F5DBBD", "#1A1A1A"),
             values=self.part_options,
             corner_radius=20,  
             text_color=("black", "white"),  
-            dropdown_fg_color=("#FFFFFF", "#1A1A1A"),  
+            dropdown_fg_color=("#F5DBBD", "#1A1A1A"),  
             dropdown_text_color=("black", "white"),
             state='readonly',
             command=self.set_part_comparison,
@@ -244,7 +249,7 @@ class SetupGUI:
             self.master.price_comparison_panel,
             width=170,  
             height=40,
-            fg_color=("#FFFFFF", "#1A1A1A"),
+            fg_color=("#F5DBBD", "#1A1A1A"),
             values=self.website_options,
             corner_radius=20,
             border_color=[self.master.primary_color, self.master.secondary_color],
@@ -261,7 +266,7 @@ class SetupGUI:
             self.master.price_comparison_panel,
             width=170,  
             height=40,
-            fg_color=("#FFFFFF", "#1A1A1A"),
+            fg_color=("#F5DBBD", "#1A1A1A"),
             values=self.website_options,
             corner_radius=20,
             border_color=[self.master.primary_color, self.master.secondary_color],

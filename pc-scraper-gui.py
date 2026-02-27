@@ -668,6 +668,23 @@ class GUI(ctk.CTk):
             self.right_console.see('end')
             print(f"GUI Error: {e}\nData received: {data}")
 
+    def set_window_background(self, color_mode=None):
+        """Change window background color"""
+        if color_mode == "light":
+            ctk.set_appearance_mode("light")
+            self.configure(fg_color="#F5DBBD")  
+        elif color_mode == "dark":
+            ctk.set_appearance_mode("dark")
+            self.configure(fg_color="#1A1A1A")  
+        else:
+            current_theme = ctk.get_appearance_mode()
+            if current_theme == "Light":
+                ctk.set_appearance_mode("light")
+                self.configure(fg_color="#F5DBBD") 
+            else:
+                ctk.set_appearance_mode("dark")
+                self.configure(fg_color="#1A1A1A")
+
     def _convert_prices_and_create_excel(self):
         """Run currency conversion and Excel creation in background thread"""
         try:

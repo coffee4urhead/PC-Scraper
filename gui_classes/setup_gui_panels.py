@@ -25,15 +25,16 @@ class PanelSetup:
     def _create_main_panels(self):
         self.master.left_panel = ctk.CTkFrame(
             self.master.scraper_tab, 
-            fg_color=("#FFFFFF", "#1A1A1A"),
+            fg_color=("#F5DBBD", "#1A1A1A"),
+            border_color=("#F5DBBD", "#1A1A1A"),
             border_width=2,
         )
         self.master.left_panel.place(relx=0.05, rely=0.05, relwidth=0.55, relheight=0.9)
 
         self.master.right_panel = ctk.CTkFrame(
             self.master.scraper_tab, 
-            fg_color="#1A1A1A",  
+            fg_color=("#F5DBBD", "#1A1A1A"),  
             border_width=2,
-            border_color=("#FFFFFF", "#1A1A1A"),
+            border_color=("#F5DBBD", "#1A1A1A"),
         )
         self.master.right_panel.place(relx=0.62, rely=0.05, relwidth=0.33, relheight=0.9)

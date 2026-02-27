@@ -213,9 +213,9 @@ class ContentSetup:
         left_title = ctk.CTkLabel(
             self.master.left_panel,
             text="PC Parts Web Scraper",
-            text_color="white",
+            text_color=("black", "white"),
             font=(self.master.preferred_font, self.master.preferred_size, "bold"),
-            fg_color="transparent"
+            fg_color=("#F5DBBD", "#1A1A1A")
         )
         left_title.place(relx=0.05, rely=0.02)
 
@@ -320,7 +320,7 @@ class ContentSetup:
     def _add_description_frame(self):
         left_frame_label_container = ctk.CTkFrame(
             self.master.left_panel, 
-                fg_color=("#DBD8D8", "#232323"),
+                fg_color=("#F5DBBD", "#232323"),
                 border_width=2,
                 border_color=("#FFFFFF", "#1A1A1A"),
                 corner_radius=30

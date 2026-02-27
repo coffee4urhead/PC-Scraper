@@ -9,7 +9,7 @@ class ScraperOptionsWindow(ctk.CTkToplevel):
         self.geometry("520x820")
         self.title("🧩 Scraper Settings")
         self.resizable(False, False)
-        self.configure(fg_color=("#1E1E1E", "#121212"))
+        self.configure(fg_color=("#F5DBBD", "#1A1A1A"),)
 
         self.currency_mapping = {
             "🇺🇸 USD - US Dollar": "USD",
@@ -51,7 +51,10 @@ class ScraperOptionsWindow(ctk.CTkToplevel):
         self.grab_set()
 
         title_label = ctk.CTkLabel(
-            self, text="Scraper Configuration", font=ctk.CTkFont(size=22, weight="bold")
+            self, text="Scraper Configuration", font=ctk.CTkFont(size=22, weight="bold"),
+            fg_color=("#F5DBBD", "#1A1A1A"),
+            padx=3, pady=3,
+            corner_radius=2,
         )
         title_label.pack(pady=(20, 10))
 
@@ -73,7 +76,10 @@ class ScraperOptionsWindow(ctk.CTkToplevel):
         self.browser_menu.pack(padx=5, pady=5, fill="x")
 
         self.headless_switch = ctk.CTkSwitch(
-            self.scroll_frame, text="Run in headless mode", onvalue=True, offvalue=False
+            self.scroll_frame, text="Run in headless mode", onvalue=True, offvalue=False,
+            text_color=("black", "white"),
+            button_color=("#F5DBBD", "#1A1A1A"),
+            button_hover_color=("#E0CFAF", "#2D2D2D")
         )
         self.headless_switch.pack(anchor="w", padx=5, pady=(10, 15))
 
@@ -138,10 +144,19 @@ class ScraperOptionsWindow(ctk.CTkToplevel):
         )
         self.output_format_menu.pack(padx=5, pady=5, fill="x")
 
-        self.debug_switch = ctk.CTkSwitch(self.scroll_frame, text="Enable Debug Logs")
+        self.debug_switch = ctk.CTkSwitch(
+            self.scroll_frame,
+            text="Enable Debug Logs",
+            text_color=("black", "white"),
+            button_color=("#F5DBBD", "#1A1A1A"),
+            button_hover_color=("#E0CFAF", "#2D2D2D")
+            )
         self.debug_switch.pack(anchor="w", padx=5, pady=10)
 
-        self.auto_close_switch = ctk.CTkSwitch(self.scroll_frame, text="Auto-close browser after scraping")
+        self.auto_close_switch = ctk.CTkSwitch(self.scroll_frame, text="Auto-close browser after scraping",
+                                                           text_color=("black", "white"),
+            button_color=("#F5DBBD", "#1A1A1A"),
+            button_hover_color=("#E0CFAF", "#2D2D2D"))
         self.auto_close_switch.pack(anchor="w", padx=5, pady=10)
 
         # ====================================================
@@ -209,9 +224,17 @@ class ScraperOptionsWindow(ctk.CTkToplevel):
         
         self.default_format_radio = ctk.CTkRadioButton(
             format_frame, 
-            text="Default formatting (0.00)", 
+            text="⭐ Default formatting (0.00)",  
             variable=self.formatting_var, 
-            value="default"
+            value="default",
+            text_color=("black", "white"),
+            font=(self.master.preferred_font, 14),
+            fg_color=("#1A1A1A", "#F5DBBD"), 
+            hover_color=("#2D2D2D", "#E0CFAF"),
+            border_color=("#8B4513", "#F5DBBD"),
+            border_width_unchecked=2,
+            border_width_checked=3,  
+            corner_radius=15,
         )
         self.default_format_radio.pack(anchor="w", padx=5, pady=2)
         
@@ -220,7 +243,15 @@ class ScraperOptionsWindow(ctk.CTkToplevel):
             text="Custom formatting", 
             variable=self.formatting_var, 
             value="custom",
-            command=self._toggle_custom_format
+            command=self._toggle_custom_format,
+            text_color=("black", "white"),
+            font=(self.master.preferred_font, 14),
+            fg_color=("#1A1A1A", "#F5DBBD"), 
+            hover_color=("#2D2D2D", "#E0CFAF"),
+            border_color=("#8B4513", "#F5DBBD"),
+            border_width_unchecked=2,
+            border_width_checked=5,  
+            corner_radius=15,
         )
         self.custom_format_radio.pack(anchor="w", padx=5, pady=2)
         
