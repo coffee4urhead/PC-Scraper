@@ -1,6 +1,5 @@
 import json
 import os
-from customtkinter import ThemeManager
 
 class SettingsManager:
     def __init__(self, settings_file="scraper_settings.json"):

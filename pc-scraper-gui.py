@@ -20,7 +20,6 @@ from windows.scraper_manager_window import ScraperManagerWindow
 
 from gui_classes.setup_gui_main import SetupGUI
 from currency_converter import RealCurrencyConverter
-from scrapers.desktop_bg_scraper import DesktopScraper
 
 from graph_comparer import GraphComparer
 from historical_comparer import HistoricalComparison
