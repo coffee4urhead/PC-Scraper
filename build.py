@@ -9,6 +9,8 @@ import shutil
 import subprocess
 import platform
 
+#commit after the build 
+
 def clean_build():
     """Clean previous build artifacts"""
     dirs_to_clean = ['build', 'dist']
