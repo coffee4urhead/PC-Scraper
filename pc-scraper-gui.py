@@ -35,6 +35,25 @@ def resource_path(relative_path):
 class GUI(ctk.CTk):
     def __init__(self):
         super().__init__()
+
+        print("=" * 60)
+        print("PC SCRAPER - INITIALIZING")
+        print("=" * 60)
+        
+        try:
+            from scrapers.scraper_utils import _ensure_playwright_browsers
+            print("🔍 Checking Playwright browsers...")
+            browsers_ready = _ensure_playwright_browsers()
+            if browsers_ready:
+                print("✅ Playwright browsers are ready!")
+            else:
+                print("⚠️ Playwright browsers may need manual installation later.")
+        except Exception as e:
+            print(f"⚠️ Browser check warning: {e}")
+            print("   Will check again when scraping starts.")
+        
+        print("-" * 60 + "\n")
+
         self.title("PC Scraper GUI")
         self.geometry("1200x700")
         ctk.set_default_color_theme('blue')
@@ -233,7 +252,7 @@ class GUI(ctk.CTk):
         search_term = self.left_entry.get().strip()
 
         if not self.scraper_container:
-            self.scraper_container = ScraperContainer(self.scraper_list)
+            self.scraper_container = ScraperContainer(self.scraper_list, self.settings_manager)
         else:
             self.scraper_container.scraper_list = self.scraper_list
     
