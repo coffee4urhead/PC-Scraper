@@ -1,3 +1,7 @@
+**/playwright_browsers/
+**/.playwright_browsers/
+scrapers/.playwright_browsers/
+
 # Python virtual environment
 venv/
 vir-env/
