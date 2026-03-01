@@ -121,7 +121,7 @@ class SetupGUI:
             self.master.scraper_list.append(scraper)
         
             if not self.master.scraper_container:
-                self.master.scraper_container = ScraperContainer(self.master.scraper_list, self.master.settings_manager)
+                self.master.scraper_container = ScraperContainer(self.master.scraper_list)
             else:
                 self.master.scraper_container.scraper_list = self.master.scraper_list
         

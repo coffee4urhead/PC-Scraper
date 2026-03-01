@@ -183,47 +183,24 @@ class ContentSetup:
 
     def _play_background_music(self):
         """Play background music"""
-        try:
-            if hasattr(sys, '_MEIPASS'):
-                base_path = sys._MEIPASS
-            else:
-                base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        except Exception as e:
-            print(f"DEBUG: Error getting base path: {e}")
-            base_path = os.getcwd()
-    
-        audio_path = os.path.join(base_path, "Music", "scraping-faster.mp3")
-    
-        if not os.path.exists(audio_path):
-            print(f"DEBUG: Not found at primary path, trying alternatives...")
-            alternative_paths = [
-                os.path.join(base_path, "scraping-faster.mp3"),  
-                os.path.join(os.getcwd(), "Music", "scraping-faster.mp3"), 
-                os.path.join(os.path.dirname(__file__), "..", "Music", "scraping-faster.mp3"),  
-            ]
-        
-            for alt_path in alternative_paths:
-                if os.path.exists(alt_path):
-                    audio_path = alt_path
-                    break
-    
+        audio_path = os.path.join(os.path.dirname(__file__), "../Music/scraping-faster.mp3")
         if os.path.exists(audio_path):
             try:
                 pygame.mixer.music.load(audio_path)
                 pygame.mixer.music.play(-1)
-            
+                
                 if hasattr(self, 'control_music_volume'):
                     pygame.mixer.music.set_volume(self.control_music_volume.get() / 100)
                 else:
                     pygame.mixer.music.set_volume(0.1)
-            
-                print(f"🎵 Background music started")
+
+                print(f"🎵 Background music started from: {audio_path}")
                 return True
             except Exception as e:
                 print(f"❌ Error playing music: {e}")
                 return False
         else:
-            print(f"❌ Audio file not found at any location")
+            print(f"❌ Audio file not found: {audio_path}")
             return False
         
     def toggle_audio(self):

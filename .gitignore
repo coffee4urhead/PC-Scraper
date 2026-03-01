@@ -11,7 +11,6 @@ configs/
 
 # Python cache and build files
 __pycache__/
-*.spec
 *.py[cod]
 *$py.class
 *.so

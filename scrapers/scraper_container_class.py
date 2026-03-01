@@ -5,14 +5,12 @@ import logging
 import random
 from collections import defaultdict
 from playwright.async_api import async_playwright, Browser, BrowserContext
-from settings_manager import SettingsManager
 
 logger = logging.getLogger(__name__)
 
 class ScraperContainer:
-    def __init__(self, scraper_list: List[AsyncPlaywrightBaseScraper], settings_manager: SettingsManager):
+    def __init__(self, scraper_list: List[AsyncPlaywrightBaseScraper]):
         self.scraper_list = scraper_list
-        self.settings_manager = settings_manager
         self._active_scrapers = {}
         self._all_results = {}  
         self.browser = None
@@ -40,36 +38,10 @@ class ScraperContainer:
         """Start shared browser instances for all scrapers"""
         logger.info("Starting shared browsers for all scrapers...")
         try:
-            preferred_browser = self.settings_manager.get('preferred_browser', 'Chrome')
             self._playwright = await async_playwright().start()
-            if preferred_browser == 'Chrome':
-                self.browser = await asyncio.shield(self._playwright.chromium.launch(
+            
+            self.browser = await asyncio.shield(self._playwright.chromium.launch(
                 headless=False,
-                args=[
-                    '--start-maximized',
-                    '--disable-blink-features=AutomationControlled',
-                ]
-            )) 
-            elif preferred_browser == 'Firefox':
-                self.browser = await asyncio.shield(self._playwright.firefox.launch(
-                headless=False,
-                args=[
-                    '--start-maximized',
-                    '--disable-blink-features=AutomationControlled',
-                ]
-            ))
-            elif preferred_browser == 'Safari':
-                self.browser = await asyncio.shield(self._playwright.webkit.launch(
-                headless=False,
-                args=[
-                    '--start-maximized',
-                    '--disable-blink-features=AutomationControlled',
-                ]
-            ))
-            elif preferred_browser == 'Edge':
-                self.browser = await asyncio.shield(self._playwright.chromium.launch(
-                headless=False,
-                channel='msedge',
                 args=[
                     '--start-maximized',
                     '--disable-blink-features=AutomationControlled',
