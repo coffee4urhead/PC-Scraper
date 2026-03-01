@@ -43,7 +43,7 @@ class GUI(ctk.CTk):
         try:
             from scrapers.scraper_utils import _ensure_playwright_browsers
             print("🔍 Checking Playwright browsers...")
-            browsers_ready = _ensure_playwright_browsers()
+            browsers_ready = _ensure_playwright_browsers(self)
             if browsers_ready:
                 print("✅ Playwright browsers are ready!")
             else:

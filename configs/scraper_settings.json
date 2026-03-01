@@ -1,7 +1,7 @@
 {
     "preferred_currency": "BGN",
     "price_format": "0.00",
-    "preferred_browser": "Firefox",
+    "preferred_browser": "Chrome",
     "headless": false,
     "max_pages": 50,
     "delay_between_requests": 5.2,
