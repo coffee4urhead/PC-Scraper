@@ -347,8 +347,6 @@ class AsyncPlaywrightBaseScraper(ABC):
         logger.info(f"Worker {worker_id}: Scraping page {page_num}: {page_url}")
 
         links_page = None
-        product_tasks = []
-        product_pages = []
         try:
             links_page = await context.new_page()
             links_page.set_default_timeout(60000)
