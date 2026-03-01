@@ -4,6 +4,7 @@ from tkinter import filedialog
 from dotenv import load_dotenv
 import os
 import threading
+import pygame
 import traceback
 import sys
 
@@ -31,8 +32,6 @@ def resource_path(relative_path):
     else: base_path = os.path.abspath(".")
     
     return os.path.join(base_path, relative_path)
-
-# only Senetic needs fixing 
 
 class GUI(ctk.CTk):
     def __init__(self):
@@ -675,7 +674,10 @@ class GUI(ctk.CTk):
             self.configure(fg_color="#F5DBBD")  
         elif color_mode == "dark":
             ctk.set_appearance_mode("dark")
-            self.configure(fg_color="#1A1A1A")  
+            self.configure(fg_color="#1A1A1A")
+        elif color_mode == "system":
+            ctk.set_appearance_mode("system")
+            self.configure(fg_color=("#F5DBBD", "#1A1A1A"))
         else:
             current_theme = ctk.get_appearance_mode()
             if current_theme == "Light":
@@ -1010,7 +1012,9 @@ class GUI(ctk.CTk):
 
     def on_closing(self):
         print("Closing application...")
-    
+        pygame.mixer.music.stop()
+        pygame.mixer.quit()
+
         if self.scraper_container:
             print("Stopping all scrapers...")
             try:

@@ -38,7 +38,7 @@ class SetupGUI:
         
         theme_path = self.master.settings_manager.get_theme_path()
         ctk.set_default_color_theme(theme_path) 
-        ctk.set_appearance_mode(self.master.settings_manager.get_ui_setting('preferred_theme', 'System').lower())
+        ctk.set_appearance_mode(self.master.settings_manager.get_ui_setting('preferred_theme', 'system').lower())
         
         self._setup_components()
     
@@ -50,7 +50,7 @@ class SetupGUI:
         self.master.preferred_language = self.master.settings_manager.get_ui_setting('preferred_language', 'en-US')
         self.master.preferred_size = int(self.master.settings_manager.get_ui_setting('preferred_size', 16))
         self.master.preferred_browser = self.master.settings_manager.get('preferred_browser', 'Chrome')
-        self.master.preferred_theme = self.master.settings_manager.get_ui_setting('preferred_theme', 'System')
+        self.master.preferred_theme = self.master.settings_manager.get_ui_setting('preferred_theme', 'system')
         self.master.preferred_font = self.master.settings_manager.get_ui_setting('preferred_font', 'Verdana')
         self.master.save_folder = self.master.settings_manager.get_ui_setting('save_folder', 
                                                                              os.path.join(os.path.expanduser("~"), "Desktop"))

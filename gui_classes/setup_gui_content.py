@@ -1,7 +1,10 @@
 import customtkinter as ctk
 import os
 import sys
+import pygame
 from PIL import Image
+
+pygame.mixer.init()
 
 class ContentSetup:
     def __init__(self, master, settings_manager):
@@ -18,6 +21,7 @@ class ContentSetup:
                               'PIC.bg', 'jarcomputers.com', 'Desktop.bg', 
                               'Amazon.com', 'Amazon.de']
         self.selected = []
+        self._play_background_music()
 
     def _add_action_buttons(self):
         """Add action buttons to the left panel"""
@@ -120,11 +124,15 @@ class ContentSetup:
             fg_color=("#E79CEE", "#C251CC"),
             hover_color=("#E7A2EE", "#CF55DA"),
             text='' if self.audio_image_ctk_off else 'Music',
-            image=self.audio_image_ctk_off,
-            command=self._get_audio_callback()
+            image=self.audio_image_ctk_on,
+            command=self.toggle_audio
         )
         self.mute_audio_btn.place(relx=0.77, rely=0.89, relwidth=0.1, relheight=0.09)
-    
+
+        self.control_music_volume = slider = ctk.CTkSlider(self.master.left_panel, orientation='vertical', from_=0, to=100, command=self.slider_event)
+        slider.set(10) 
+        slider.place(relx=0.02, rely=0.68, relwidth=0.02, relheight=0.3)
+
     def _get_scrape_callback(self):
         """Get the scrape button callback"""
         if hasattr(self.master, '_start_scraping'):
@@ -166,22 +174,53 @@ class ContentSetup:
                 print("Manager window method not found")
             return dummy_callback
 
-    def _get_audio_callback(self):
-        """Get the audio button callback"""
-        def toggle_audio():
-            if hasattr(self, 'audio_muted'):
-                self.audio_muted = not self.audio_muted
-            else:
-                self.audio_muted = True
-            
-            if self.audio_muted:
-                self.mute_audio_btn.configure(image=self.audio_image_ctk_off)
-                print("Audio muted")
-            else:
-                self.mute_audio_btn.configure(image=self.audio_image_ctk_on)
-                print("Audio unmuted")
+    def slider_event(self, value):
+        """Event handler for the music volume slider"""
         
-        return toggle_audio
+        volume = float(value) / 100
+        pygame.mixer.music.set_volume(volume)
+        print(f"Music volume set to: {value:.2f}%")
+
+    def _play_background_music(self):
+        """Play background music"""
+        audio_path = os.path.join(os.path.dirname(__file__), "../Music/scraping-faster.mp3")
+        if os.path.exists(audio_path):
+            try:
+                pygame.mixer.music.load(audio_path)
+                pygame.mixer.music.play(-1)
+                
+                if hasattr(self, 'control_music_volume'):
+                    pygame.mixer.music.set_volume(self.control_music_volume.get() / 100)
+                else:
+                    pygame.mixer.music.set_volume(0.1)
+
+                print(f"🎵 Background music started from: {audio_path}")
+                return True
+            except Exception as e:
+                print(f"❌ Error playing music: {e}")
+                return False
+        else:
+            print(f"❌ Audio file not found: {audio_path}")
+            return False
+        
+    def toggle_audio(self):
+        """Get the audio button callback"""
+
+        if not hasattr(self, 'audio_muted'):
+            self.audio_muted = False 
+    
+        self.audio_muted = not self.audio_muted
+        
+        if self.audio_muted:
+            self.mute_audio_btn.configure(image=self.audio_image_ctk_off)
+            pygame.mixer.music.stop()
+            self.control_music_volume.place_forget()
+            print("🔇 Audio muted")
+        else:
+            self.mute_audio_btn.configure(image=self.audio_image_ctk_on)
+            if self._play_background_music():
+                self.control_music_volume.place(relx=0.02, rely=0.68, relwidth=0.02, relheight=0.3)
+            print("🔊 Audio unmuted")
     
     def add_left_panel_content(self):
         self._add_left_title()
