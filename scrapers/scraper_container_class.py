@@ -111,8 +111,14 @@ class ScraperContainer:
         Start all scrapers concurrently using asyncio.
         Returns: Dictionary with website names as keys and lists of products as values.
         """
-        if not self.browser:
-            await self.start_shared_browser()
+        if self.browser:
+            logger.info("Cleaning up existing browser before starting new one")
+            await self._cleanup_resources()
+            self.browser = None
+            self._playwright = None
+            self.context = None
+    
+        await self.start_shared_browser()
         
         self._all_results = {}
         scraper_tasks = []
@@ -175,43 +181,102 @@ class ScraperContainer:
             return self._all_results
     
     async def _cleanup_contexts(self):
-        """Clean up all contexts"""
-        for scraper_id, context in self._contexts.items():
+        """Clean up all contexts with timeout protection"""
+        logger.info(f"Cleaning up {len(self._contexts)} contexts")
+    
+        for scraper_id, context in list(self._contexts.items()):
             try:
-                await context.close()
-                self.context = None
-                logger.debug(f"Closed context for scraper {scraper_id}")
+                logger.info(f"Closing context for scraper {scraper_id}")
+            
+                try:
+                    pages = context.pages
+                    logger.info(f"Context has {len(pages)} pages open")
+                
+                    for page in pages:
+                        try:
+                            await asyncio.wait_for(page.close(), timeout=2.0)
+                            logger.info(f"Closed page in context {scraper_id}")
+                        except Exception as e:
+                            logger.warning(f"Error closing page: {e}")
+                except Exception as e:
+                    logger.warning(f"Error getting pages: {e}")
+            
+                try:
+                    await asyncio.wait_for(context.close(), timeout=5.0)
+                    logger.info(f"Closed context for scraper {scraper_id}")
+                except asyncio.TimeoutError:
+                    logger.warning(f"Timeout closing context for scraper {scraper_id}, forcing...")
+                    try:
+                        pass
+                    except:
+                        pass
+                    
             except Exception as e:
                 logger.error(f"Error closing context for scraper {scraper_id}: {e}")
+    
         self._contexts.clear()
+        logger.info("All contexts cleared")
 
     async def _cleanup_resources(self):
-        """Clean up browser resources"""
+        """Clean up browser resources with timeout protection"""
+        logger.info("=== Starting _cleanup_resources ===")
+    
+        logger.info("Cleaning up contexts...")
         try:
-            await self._cleanup_contexts()
-            
+            await asyncio.wait_for(self._cleanup_contexts(), timeout=10.0)
+            logger.info("Contexts cleaned up successfully")
+        except asyncio.TimeoutError:
+            logger.error("Timeout cleaning up contexts")
+            self._contexts.clear()
+        except Exception as e:
+            logger.error(f"Error cleaning up contexts: {e}")
+    
+        logger.info(f"Closing context. Context exists: {self.context is not None}")
+        try:
             if self.context:
-                await self.context.close()
+                await asyncio.wait_for(self.context.close(), timeout=5.0)
                 self.context = None
                 logger.info("Browser context closed.")
+            else:
+                logger.info("No context to close")
+        except asyncio.TimeoutError:
+            logger.error("Timeout closing context")
+            self.context = None
         except Exception as e:
             logger.error(f"Error closing context: {e}")
-        
+            self.context = None
+    
+        logger.info(f"Closing browser. Browser exists: {self.browser is not None}")
         try:
             if self.browser:
-                await self.browser.close()
+                await asyncio.wait_for(self.browser.close(), timeout=5.0)
                 self.browser = None
                 logger.info("Browser closed.")
+            else:
+                logger.info("No browser to close")
+        except asyncio.TimeoutError:
+            logger.error("Timeout closing browser")
+            self.browser = None
         except Exception as e:
             logger.error(f"Error closing browser: {e}")
-        
+            self.browser = None
+    
+        logger.info(f"Stopping playwright. Playwright exists: {self._playwright is not None}")
         try:
             if self._playwright:
-                await self._playwright.stop()
+                await asyncio.wait_for(self._playwright.stop(), timeout=5.0)
                 self._playwright = None
                 logger.info("Playwright stopped.")
+            else:
+                logger.info("No playwright to stop")
+        except asyncio.TimeoutError:
+            logger.error("Timeout stopping playwright")
+            self._playwright = None
         except Exception as e:
             logger.error(f"Error stopping playwright: {e}")
+            self._playwright = None
+    
+        logger.info("=== _cleanup_resources completed ===")
 
     async def close_all_resources(self):
         """Public method to close all resources"""
@@ -264,6 +329,22 @@ class ScraperContainer:
             
             if not task.done():
                 task.cancel()
+        
+        
+        for scraper in self.scraper_list:
+            if hasattr(scraper, '_stop_event'):
+                scraper._stop_event.clear()  
+            if hasattr(scraper, '_stop_requested'):
+                scraper._stop_requested = False
+            if hasattr(scraper, '_running'):
+                scraper._running = False
+
+            if hasattr(scraper, 'products_collected'):
+                scraper.products_collected = 0
+            if hasattr(scraper, 'total_expected_products'):
+                scraper.total_expected_products = 0
+            if hasattr(scraper, 'products_per_page'):
+                scraper.products_per_page = {}
         
         logger.info(f"Stopped {stopped_count} scrapers")
         return stopped_count
