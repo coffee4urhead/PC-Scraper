@@ -407,10 +407,10 @@ class ContentSetup:
 
         left_label_description = ctk.CTkLabel(
             left_label_container,
-            text='Lorem Ipsum is simply dummy text of the printing and typesetting industry...',
+            text='This version of the PC Scraper features new improved and modern GUI. In the next upcoming versions I will be adding more features and improving the overall experience. Stay tuned for updates! \n\nFor any questions, suggestions or issues, please contact me at: dark1982soul@gmail.com or raise a Github issue at: https://github.com/coffee4urhead/PC-Scraper.git',
             anchor='nw',      
-            font=(self.master.preferred_font, self.master.preferred_size),
-            justify='left',
+            font=(self.master.preferred_font, 17),
+            justify='center',
             text_color=("#000000", "#FFFFFF"),
             wraplength=420  
         )

@@ -50,7 +50,7 @@ class ScraperManager:
             "Ezona.bg": "BGN",
             "Tova.bg": "BGN",
             "Hits.bg": "EUR",
-            "Amazon.co.uk": "GBP",
+            "Amazon.co.uk": "EUR",
             "Amazon.de": "EUR"
         }
     

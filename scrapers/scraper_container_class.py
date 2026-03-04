@@ -41,39 +41,34 @@ class ScraperContainer:
         logger.info("Starting shared browsers for all scrapers...")
         try:
             preferred_browser = self.settings_manager.get('preferred_browser', 'Chrome')
+            browser_args = [
+                '--disable-blink-features=AutomationControlled',
+                '--start-minimized', 
+                '--no-first-run',      
+                '--no-default-browser-check',  
+                '--disable-popup-blocking',     
+            ]
             self._playwright = await async_playwright().start()
             if preferred_browser == 'Chrome':
                 self.browser = await asyncio.shield(self._playwright.chromium.launch(
                 headless=False,
-                args=[
-                    '--start-maximized',
-                    '--disable-blink-features=AutomationControlled',
-                ]
+                args=browser_args
             )) 
             elif preferred_browser == 'Firefox':
                 self.browser = await asyncio.shield(self._playwright.firefox.launch(
                 headless=False,
-                args=[
-                    '--start-maximized',
-                    '--disable-blink-features=AutomationControlled',
-                ]
+                args=browser_args
             ))
             elif preferred_browser == 'Safari':
                 self.browser = await asyncio.shield(self._playwright.webkit.launch(
                 headless=False,
-                args=[
-                    '--start-maximized',
-                    '--disable-blink-features=AutomationControlled',
-                ]
+                args=browser_args
             ))
             elif preferred_browser == 'Edge':
                 self.browser = await asyncio.shield(self._playwright.chromium.launch(
                 headless=False,
                 channel='msedge',
-                args=[
-                    '--start-maximized',
-                    '--disable-blink-features=AutomationControlled',
-                ]
+                args=browser_args
             ))
 
             self.context = await self.browser.new_context()
@@ -135,8 +130,8 @@ class ScraperContainer:
             self._all_results[website_key] = []
             
             task = asyncio.create_task(
-                self._run_single_scraper(scraper, search_term, max_pages)
-            )
+                self._run_single_scraper(scraper, search_term, self.settings_manager.get('max_pages', max_pages)
+            ))
             scraper_tasks.append(task)
             self._active_scrapers[id(scraper)] = {
                 'scraper': scraper,
@@ -181,7 +176,6 @@ class ScraperContainer:
             return self._all_results
     
     async def _cleanup_contexts(self):
-        """Clean up all contexts with timeout protection"""
         logger.info(f"Cleaning up {len(self._contexts)} contexts")
     
         for scraper_id, context in list(self._contexts.items()):
@@ -218,10 +212,10 @@ class ScraperContainer:
         logger.info("All contexts cleared")
 
     async def _cleanup_resources(self):
-        """Clean up browser resources with timeout protection"""
         logger.info("=== Starting _cleanup_resources ===")
     
         logger.info("Cleaning up contexts...")
+        
         try:
             await asyncio.wait_for(self._cleanup_contexts(), timeout=10.0)
             logger.info("Contexts cleaned up successfully")
@@ -232,6 +226,7 @@ class ScraperContainer:
             logger.error(f"Error cleaning up contexts: {e}")
     
         logger.info(f"Closing context. Context exists: {self.context is not None}")
+        
         try:
             if self.context:
                 await asyncio.wait_for(self.context.close(), timeout=5.0)
@@ -247,6 +242,7 @@ class ScraperContainer:
             self.context = None
     
         logger.info(f"Closing browser. Browser exists: {self.browser is not None}")
+        
         try:
             if self.browser:
                 await asyncio.wait_for(self.browser.close(), timeout=5.0)
@@ -262,6 +258,7 @@ class ScraperContainer:
             self.browser = None
     
         logger.info(f"Stopping playwright. Playwright exists: {self._playwright is not None}")
+        
         try:
             if self._playwright:
                 await asyncio.wait_for(self._playwright.stop(), timeout=5.0)

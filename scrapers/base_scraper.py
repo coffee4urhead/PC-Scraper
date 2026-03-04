@@ -8,6 +8,8 @@ from playwright.async_api import async_playwright
 from typing import List, Dict, Any, Optional
 import logging
 from scrapers.cpu_memory_manager import CPUMemoryManagerClass
+from settings_manager import SettingsManager
+from currency_converter import RealCurrencyConverter
 import threading
 
 logging.basicConfig(level=logging.INFO)
@@ -19,8 +21,8 @@ class AsyncPlaywrightBaseScraper(ABC):
     def __init__(self, website_currency, gui_callback=None):
         self.website_currency = website_currency
         self.gui_callback = gui_callback
-        
-        self.max_concurrent_pages = 2
+        self.converter = RealCurrencyConverter()
+        self.settings_manager = SettingsManager()
 
         self.products_collected = 0
         self.total_expected_products = 0 
@@ -29,18 +31,27 @@ class AsyncPlaywrightBaseScraper(ABC):
         self.expected_products_per_page = {}
 
         self.max_concurrent_products = 3
-        self.delay_between_requests = 2
-        self.random_delay_multiplier = 1.5
         
         self._request_times = Deque()
         self.max_requests_per_minute = 30  
         self.min_delay_between_requests = 1.5 
-        self.preferred_browser = "chrome"
-        self.headless = True  
         
-        self.min_price = None
-        self.max_price = None
-        self.exclude_keywords = ""
+        raw_min = self.settings_manager.get('min_price', 0)
+        raw_max = self.settings_manager.get('max_price', 0)
+        
+        self.original_min_price = self._safe_float_conversion(raw_min, 0)
+        self.original_max_price = self._safe_float_conversion(raw_max, float('inf'))
+        
+        self.target_currency = self.settings_manager.get('preferred_currency', "BGN")
+        
+        self.converted_min = self.original_min_price
+        self.converted_max = self.original_max_price
+        
+        self._update_converted_prices()
+        
+        self.exclude_keywords = self.settings_manager.get('exclude_keywords', [])
+
+        self.exclude_keywords = self.settings_manager.get('exclude_keywords', [])
         
         self.current_progress = 0
         self.total_tasks = 0
@@ -62,6 +73,88 @@ class AsyncPlaywrightBaseScraper(ABC):
 
         self._processed_urls = set()
 
+    def _update_converted_prices(self):
+        """Update converted price values based on current settings"""
+        target_currency = self.settings_manager.get('preferred_currency', "BGN")
+        
+        if self.website_currency != target_currency:
+            if self.original_min_price > 0:
+                converted = self._convert_prices_only(self.original_min_price, self.website_currency, target_currency)
+                self.converted_min = float(converted) if converted is not None else self.original_min_price
+                print(f"DEBUG: Converted min_price to {self.converted_min} {target_currency}")
+            else:
+                self.converted_min = self.original_min_price
+                
+            if self.original_max_price != float('inf') and self.original_max_price > 0:
+                converted = self._convert_prices_only(self.original_max_price, self.website_currency, target_currency)
+                self.converted_max = float(converted) if converted is not None else self.original_max_price
+                print(f"DEBUG: Converted max_price to {self.converted_max} {target_currency}")
+            else:
+                self.converted_max = self.original_max_price
+        else:
+            self.converted_min = self._convert_prices_only(self.original_min_price, "EUR", target_currency)
+            self.converted_max = self._convert_prices_only(self.original_max_price, "EUR", target_currency)
+
+    def update_settings(self, min_price=None, max_price=None, exclude_keywords=None):
+        """Update scraper settings and re-convert if needed"""
+        updated = False
+        
+        if min_price is not None:
+            self.original_min_price = float(min_price)
+            updated = True
+            
+        if max_price is not None:
+            self.original_max_price = float(max_price)
+            updated = True
+            
+        if exclude_keywords is not None:
+            self.exclude_keywords = exclude_keywords
+            
+        if updated:
+            self._update_converted_prices()
+            print(f"DEBUG: Updated settings - min: {self.original_min_price} -> {self.converted_min} {self.target_currency}, max: {self.original_max_price} -> {self.converted_max} {self.target_currency}")
+
+    def _safe_float_conversion(self, value, default=0):
+        """Safely convert any value to float"""
+        if value is None:
+            return default
+            
+        if isinstance(value, (int, float)):
+            return float(value)
+            
+        if isinstance(value, str):
+            try:
+                cleaned = re.sub(r'[^\d.,-]', '', value)
+                cleaned = cleaned.replace(',', '.')
+                if cleaned.count('.') > 1:
+                    parts = cleaned.split('.')
+                    cleaned = parts[0] + '.' + ''.join(parts[1:])
+                return float(cleaned) if cleaned else default
+            except (ValueError, TypeError):
+                return default
+                
+        return default
+    def _convert_prices_only(self, price_val, source_currency, target_currency):
+        """Convert a single price value to the target currency - returns float"""
+        try:
+            if isinstance(price_val, str):
+                price_val = self._safe_float_conversion(price_val)
+                
+            if price_val is None:
+                return None
+                
+            converted_price = self.converter.convert_currency(
+                float(price_val),
+                source_currency,
+                target_currency
+            )
+            
+            return float(converted_price) if converted_price is not None else None
+            
+        except Exception as e:
+            print(f"Price conversion error: {str(e)}")
+            return None
+        
     async def _retry_operation(self, operation, operation_name, max_retries=3, initial_delay=2):
         """Generic retry decorator for any async operation"""
         for attempt in range(max_retries):
@@ -126,7 +219,7 @@ class AsyncPlaywrightBaseScraper(ABC):
                 print(f"DEBUG: Rate limit hit, waiting {wait_time:.1f}s")
                 await asyncio.sleep(wait_time)
         
-        delay = self.delay_between_requests * random.uniform(0.8, self.random_delay_multiplier)
+        delay = self.settings_manager.get('delay_between_requests', 2) * random.uniform(0.8, self.settings_manager.get('random_delay_multiplier', 1.5))
         delay = max(delay, self.min_delay_between_requests)
         
         print(f"DEBUG: Rate limiting - waiting {delay:.2f}s")
@@ -231,8 +324,8 @@ class AsyncPlaywrightBaseScraper(ABC):
         self.total_pages_to_scrape = 0
 
         for worker_id in range(1):
-            start_page = worker_id * self.max_concurrent_pages + 1
-            end_page = min((worker_id + 1) * self.max_concurrent_pages, max_pages)
+            start_page = worker_id * self.settings_manager.get('max_pages', 1) + 1
+            end_page = min((worker_id + 1) * self.settings_manager.get('max_pages', 2), max_pages)
             
             if start_page <= end_page:
                 pages_in_this_worker = end_page - start_page + 1
@@ -314,7 +407,7 @@ class AsyncPlaywrightBaseScraper(ABC):
                 if not self._stop_requested:
                     try:
                         await asyncio.wait_for(
-                            asyncio.sleep(self.delay_between_requests * random.uniform(0.8, 1.2)),
+                            asyncio.sleep(self.settings_manager.get('delay_between_requests', 2) * random.uniform(0.8, 1.2)),
                             timeout=5.0
                         )
                     except asyncio.TimeoutError:
@@ -536,12 +629,12 @@ class AsyncPlaywrightBaseScraper(ABC):
         price = product_data.get('price', 0)
         
         try:
-            if self.min_price and price < float(self.min_price):
+            if self.converted_min and price < float(self.converted_min):
                 return True
-            if self.max_price and price > float(self.max_price):
+            if self.converted_max and price > float(self.converted_max):
                 return True
         except (ValueError, TypeError):
-            logger.debug(f"Invalid price filter values - min: {self.min_price}, max: {self.max_price}")
+            logger.debug(f"Invalid price filter values - min: {self.converted_min}, max: {self.converted_max}")
             
         return False
 

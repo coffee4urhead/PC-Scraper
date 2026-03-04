@@ -1,5 +1,6 @@
 import customtkinter as ctk
 
+#Add the confortable mini calculator at the bottom of the selected currency so the user knows how to set boundaries
 class ScraperOptionsWindow(ctk.CTkToplevel):
     def __init__(self, master=None, scraper=None, settings_manager=None):
         super().__init__(master)
@@ -119,12 +120,29 @@ class ScraperOptionsWindow(ctk.CTkToplevel):
 
         price_frame = ctk.CTkFrame(self.scroll_frame)
         price_frame.pack(fill="x", padx=5, pady=5)
-        ctk.CTkLabel(price_frame, text="Min Price:").pack(side="left", padx=5)
-        self.min_price_entry = ctk.CTkEntry(price_frame, width=100)
-        self.min_price_entry.pack(side="left", padx=5)
-        ctk.CTkLabel(price_frame, text="Max Price:").pack(side="left", padx=5)
-        self.max_price_entry = ctk.CTkEntry(price_frame, width=100)
-        self.max_price_entry.pack(side="left", padx=5)
+
+        explanation = ctk.CTkLabel(
+            price_frame, 
+            text="Min/Max Price (EUR - will be converted to selected currency)",
+            font=("Arial", 13),
+            anchor="w"
+        )
+        explanation.pack(anchor="w", padx=5, pady=(0, 5))
+
+        input_frame = ctk.CTkFrame(price_frame, fg_color="transparent")
+        input_frame.pack(fill="x", padx=5)
+
+        ctk.CTkLabel(input_frame, text="Min:").pack(side="left", padx=2)
+        self.min_price_entry = ctk.CTkEntry(input_frame, width=100)
+        self.min_price_entry.pack(side="left", padx=2)
+
+        ctk.CTkLabel(input_frame, text="  ").pack(side="left")
+
+        ctk.CTkLabel(input_frame, text="Max:").pack(side="left", padx=2)
+        self.max_price_entry = ctk.CTkEntry(input_frame, width=100)
+        self.max_price_entry.pack(side="left", padx=2)
+
+        ctk.CTkLabel(input_frame, text="EUR").pack(side="left", padx=5)
 
         ctk.CTkLabel(self.scroll_frame, text="Exclude Keywords (comma separated):").pack(anchor="w", padx=5)
         self.exclude_entry = ctk.CTkEntry(self.scroll_frame, placeholder_text="e.g. refurbished, used, old")
@@ -450,13 +468,18 @@ class ScraperOptionsWindow(ctk.CTkToplevel):
 
     def update_max_pages_value(self, value):
         self.max_pages_count.configure(text=f"{int(value)}")
+        self.settings_manager.set('max_pages', int(value))
+        print(f"DEBUG: Updated max_pages to {self.settings_manager.get('max_pages')}.")
 
     def update_delay_value(self, value):
         self.delay_value_label.configure(text=f"{float(value):.1f}s")
+        self.settings_manager.set('delay_between_requests', float(value))
+        print(f"DEBUG: Updated delay_between_requests to {self.settings_manager.get('delay_between_requests')} seconds")
 
     def update_random_value(self, value):
-        self.random_value_label.configure(text=f"{float(value):.2f}×")
-
+        self.random_value_label.configure(text=f"{float(value):.2f}")
+        self.settings_manager.set('random_delay_multiplier', float(value))
+        print(f"DEBUG: Updated random_delay_multiplier to {self.settings_manager.get('random_delay_multiplier')} seconds")
     # ====================================================
     # Helper: collect all settings in a dict
     # ====================================================

@@ -244,15 +244,18 @@ class GUI(ctk.CTk):
             exclude_keywords = self.exclude_keywords_entry.get().strip()
     
         for scraper in self.scraper_list:
-            scraper.min_price = min_price
-            scraper.max_price = max_price
-            scraper.exclude_keywords = exclude_keywords
+            if hasattr(scraper, 'update_settings'):
+                scraper.update_settings(min_price, max_price, exclude_keywords)
+            else:
+                scraper.min_price = min_price
+                scraper.max_price = max_price
+                scraper.exclude_keywords = exclude_keywords
 
     def _start_scraping(self):
         search_term = self.left_entry.get().strip()
 
         if not self.scraper_container:
-            self.scraper_container = ScraperContainer(self.scraper_list, self.settings_manager)
+            self.scraper_container = ScraperContainer(self.scraper_list, self.settings_manager, self)
         else:
             self.scraper_container.scraper_list = self.scraper_list
     
@@ -583,6 +586,15 @@ class GUI(ctk.CTk):
                             text=f"{scraper_name}: Now targeting {total_expected} products (Overall: {total_expected_all})",
                             text_color="blue"
                     )
+            elif data_type == 'cleanup':
+                cleanup_message = data.get('message', 'Cleaning up...')
+                self.status_label.configure(
+                    text=cleanup_message,
+                    text_color="orange"
+                )
+                self.right_console.insert('end', f"🧹 Cleanup: {cleanup_message}\n")
+                self.right_console.see('end')
+
             elif data_type == 'product_progress':
                 collected = data.get('collected', 0)
                 total_expected = data.get('total_expected', 0)
@@ -704,7 +716,7 @@ class GUI(ctk.CTk):
             else:
                 ctk.set_appearance_mode("dark")
                 self.configure(fg_color="#1A1A1A")
-
+        
     def _convert_prices_and_create_excel(self):
         """Run currency conversion and Excel creation in background thread"""
         try:

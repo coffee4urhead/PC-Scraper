@@ -56,7 +56,7 @@ class AllStoreScraper(AsyncPlaywrightBaseScraper):
                 if self._should_filter_by_keywords(temp_product_data):
                     print(f'Skipped product because it was in the exclusion keywords: {self.exclude_keywords}')
                     continue
-
+                
                 if title_element:
                     href = await title_element.get_attribute('href')
                     if href:
@@ -81,14 +81,6 @@ class AllStoreScraper(AsyncPlaywrightBaseScraper):
             await page.goto(product_url, wait_until='domcontentloaded', timeout=30000)
         
             await page.wait_for_selector('div.c-product-page__product-name-wrapper h1', timeout=10000)
-
-            title_element = await page.query_selector('div.c-product-page__product-name-wrapper h1')
-            title = ""
-            if title_element:
-                title = await title_element.inner_text()
-                title = title.strip()
-            else:
-                title = "N/A"
 
             price_int_element = await page.query_selector('span.taxed-price-value')
             price = 0.0
@@ -119,7 +111,21 @@ class AllStoreScraper(AsyncPlaywrightBaseScraper):
                     print("DEBUG: No price elements found")
             else:
                 print("DEBUG: No price element found")
-        
+
+            converted_price = float(self._convert_prices_only(price, self.website_currency, self.settings_manager.get('preferred_currency', "BGN")))
+            
+            if self._should_filter_by_price({'price': converted_price}):
+                print(f'Skipped product because it was not in the range of the price filter: {self.converted_min:.2f} - {self.converted_max:.2f} {self.target_currency}')
+                return None
+            
+            title_element = await page.query_selector('div.c-product-page__product-name-wrapper h1')
+            title = ""
+            if title_element:
+                title = await title_element.inner_text()
+                title = title.strip()
+            else:
+                title = "N/A"
+
             product_data = {
                 'title': title,
                 'price': price,

@@ -1,8 +1,10 @@
 import re
 import random
+import asyncio
 from urllib.parse import quote, urljoin
 from .base_scraper import AsyncPlaywrightBaseScraper
 
+#To be fixed
 class AmazonCoUkScraper(AsyncPlaywrightBaseScraper):
     def __init__(self, website_currency, update_gui_callback=None):
         super().__init__(website_currency, update_gui_callback)
@@ -106,7 +108,8 @@ class AmazonCoUkScraper(AsyncPlaywrightBaseScraper):
     
             price_element_whole = await page.query_selector('span.a-price-whole')
             price_element_fraction = await page.query_selector('span.a-price-fraction')
-        
+
+            print(f"DEBUG: Price elements - whole: {price_element_whole}, fraction: {price_element_fraction}")
             price = 0.0
             if price_element_whole and price_element_fraction:
                 whole_text = await price_element_whole.inner_text()
@@ -148,7 +151,17 @@ class AmazonCoUkScraper(AsyncPlaywrightBaseScraper):
                             continue
                 else:
                     print(f"DEBUG: No price found for product: {title}")
-    
+
+            target_currency = self.settings_manager.get('preferred_currency', "BGN")
+            converted_price = float(self._convert_prices_only(price, self.website_currency, target_currency))
+            print(price)
+            if converted_price is not None:
+                if self._should_filter_by_price({'price': converted_price}):
+                    print(f'Skipped product because it was not in the range of the price filter: {self.converted_min:.2f} - {self.converted_max:.2f} {self.target_currency}')
+                    return None
+            else:
+                print(f"DEBUG: Could not convert price {price} {self.website_currency} to {target_currency}")
+
             product_data = {
                 'title': title,
                 'price': price,
