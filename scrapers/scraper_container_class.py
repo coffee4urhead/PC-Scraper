@@ -35,41 +35,54 @@ class ScraperContainer:
                 self.active_scrapers_count += 1
                 self.total_products_collected += getattr(scraper, 'products_collected', 0)
                 self.total_expected_products += getattr(scraper, 'total_expected_products', 0)
-
+    
     async def start_shared_browser(self):
         """Start shared browser instances for all scrapers"""
         logger.info("Starting shared browsers for all scrapers...")
         try:
             preferred_browser = self.settings_manager.get('preferred_browser', 'Chrome')
+        
+            window_height = 200   
+        
             browser_args = [
                 '--disable-blink-features=AutomationControlled',
-                '--start-minimized', 
                 '--no-first-run',      
                 '--no-default-browser-check',  
-                '--disable-popup-blocking',     
+                '--disable-popup-blocking', 
+                f'--window-size=400,{window_height}', 
+                '--disable-features=UseOzonePlatform',
+                '--ozone-platform-hint=x11',
+                '--force-device-scale-factor=1',
+                '--start-maximized=false',
+                '--disable-notifications',
+                '--disable-infobars',
+                '--disable-session-crashed-bubble',
+                '--noerrdialogs',
+                '--disable-gpu', 
             ]
+
             self._playwright = await async_playwright().start()
+        
+            launch_kwargs = {
+                'headless': False,
+                'args': browser_args
+            }
+
             if preferred_browser == 'Chrome':
-                self.browser = await asyncio.shield(self._playwright.chromium.launch(
-                headless=False,
-                args=browser_args
-            )) 
+                self.browser = await asyncio.shield(self._playwright.chromium.launch(**launch_kwargs))
             elif preferred_browser == 'Firefox':
-                self.browser = await asyncio.shield(self._playwright.firefox.launch(
-                headless=False,
-                args=browser_args
-            ))
+                firefox_args = [
+                    '--new-window',
+                    f'--width=400',
+                    f'--height={window_height}',
+                ]
+                launch_kwargs['args'] = firefox_args
+                self.browser = await asyncio.shield(self._playwright.firefox.launch(**launch_kwargs))
             elif preferred_browser == 'Safari':
-                self.browser = await asyncio.shield(self._playwright.webkit.launch(
-                headless=False,
-                args=browser_args
-            ))
+                self.browser = await asyncio.shield(self._playwright.webkit.launch(**launch_kwargs))
             elif preferred_browser == 'Edge':
-                self.browser = await asyncio.shield(self._playwright.chromium.launch(
-                headless=False,
-                channel='msedge',
-                args=browser_args
-            ))
+                launch_kwargs['channel'] = 'msedge'
+                self.browser = await asyncio.shield(self._playwright.chromium.launch(**launch_kwargs))
 
             self.context = await self.browser.new_context()
             logger.info("Shared browser and context started successfully.")
@@ -78,26 +91,45 @@ class ScraperContainer:
             await self._cleanup_resources()
    
     async def _create_scraper_context(self, scraper) -> BrowserContext:
-        """Create a unique context for each scraper"""
-        viewports = [
-            {'width': 1920, 'height': 1080},
-            {'width': 1366, 'height': 768},
-            {'width': 1536, 'height': 864},
-            {'width': 1440, 'height': 900}
-        ]
-
+        """Create a unique context for each scraper with windows at bottom"""
         user_agent = await self._get_random_user_agent()
 
         context = await self.browser.new_context(
             user_agent=user_agent,
-            viewport=random.choice(viewports),
+            viewport={'width': 400, 'height': 200},  
             locale='bg-BG',
             timezone_id='Europe/Sofia',
             color_scheme='light',
             reduced_motion='no-preference',
             java_script_enabled=True,
         )
+    
+        page = await context.new_page()
+    
+        await page.evaluate("""() => {
+                // Get screen dimensions
+        const screenWidth = window.screen.width;
+        const screenHeight = window.screen.height;
         
+        // Set window to bottom position
+        if (window.moveTo && window.resizeTo) {
+            // Move to bottom (0, screenHeight - 300)
+            window.moveTo(0, screenHeight - 300);
+            window.resizeTo(400, 200);
+        }
+        
+        // Try to stay behind other windows
+        if (window.blur) {
+            window.blur();
+        }
+    }""")
+    
+        try:
+            await page.bring_to_front() 
+            await page.evaluate("window.blur();")
+        except:
+            pass
+    
         self._contexts[id(scraper)] = context
         return context
     

@@ -47,6 +47,11 @@ class RealCurrencyConverter:
             
             if not data.empty:
                 rate = data['Close'].iloc[-1]
+
+                if hasattr(rate, 'item'):
+                    rate = rate.item()
+                else:
+                    rate = float(rate)
                 print(f"📊 Yahoo Finance {from_currency}/{to_currency}: {rate:.4f}")
                 return rate
         except Exception as e:

@@ -1,12 +1,13 @@
 import customtkinter as ctk
+from currency_converter import RealCurrencyConverter
 
-#Add the confortable mini calculator at the bottom of the selected currency so the user knows how to set boundaries
 class ScraperOptionsWindow(ctk.CTkToplevel):
     def __init__(self, master=None, scraper=None, settings_manager=None):
         super().__init__(master)
         self.scraper_container = scraper
         self.settings_manager = settings_manager
 
+        self.converter = RealCurrencyConverter()
         self.geometry("520x820")
         self.title("🧩 Scraper Settings")
         self.resizable(False, False)
@@ -147,64 +148,7 @@ class ScraperOptionsWindow(ctk.CTkToplevel):
         ctk.CTkLabel(self.scroll_frame, text="Exclude Keywords (comma separated):").pack(anchor="w", padx=5)
         self.exclude_entry = ctk.CTkEntry(self.scroll_frame, placeholder_text="e.g. refurbished, used, old")
         self.exclude_entry.pack(padx=5, pady=5, fill="x")
-
-        # ====================================================
-        # Output & Logging Section
-        # ====================================================
-        ctk.CTkLabel(
-            self.scroll_frame, text="Output & Logging", font=ctk.CTkFont(size=18, weight="bold")
-        ).pack(anchor="w", pady=(20, 5))
-
-        ctk.CTkLabel(self.scroll_frame, text="Save Results As:").pack(anchor="w", padx=5)
-        self.output_format_var = ctk.StringVar(value="JSON")
-        self.output_format_menu = ctk.CTkOptionMenu(
-            self.scroll_frame, variable=self.output_format_var, values=["JSON", "CSV", "Excel"]
-        )
-        self.output_format_menu.pack(padx=5, pady=5, fill="x")
-
-        self.debug_switch = ctk.CTkSwitch(
-            self.scroll_frame,
-            text="Enable Debug Logs",
-            text_color=("black", "white"),
-            button_color=("#F5DBBD", "#1A1A1A"),
-            button_hover_color=("#E0CFAF", "#2D2D2D")
-            )
-        self.debug_switch.pack(anchor="w", padx=5, pady=10)
-
-        self.auto_close_switch = ctk.CTkSwitch(self.scroll_frame, text="Auto-close browser after scraping",
-                                                           text_color=("black", "white"),
-            button_color=("#F5DBBD", "#1A1A1A"),
-            button_hover_color=("#E0CFAF", "#2D2D2D"))
-        self.auto_close_switch.pack(anchor="w", padx=5, pady=10)
-
-        # ====================================================
-        # Buttons
-        # ====================================================
-        button_frame = ctk.CTkFrame(self)
-        button_frame.pack(pady=15, padx=20, fill="x")
-
-        self.apply_button = ctk.CTkButton(
-            button_frame,
-            text="✅ Apply Settings",
-            height=80,
-            corner_radius=12,
-            fg_color="#3B82F6",
-            hover_color="#2563EB",
-            command=self.apply_settings
-        )
-        self.apply_button.pack(side="left", expand=True, fill="x", padx=(0, 10))
-
-        self.save_close_button = ctk.CTkButton(
-            button_frame,
-            text="💾 Save & Close",
-            height=80,
-            corner_radius=12,
-            fg_color="#22C55E",
-            hover_color="#16A34A",
-            command=self.save_and_close
-        )
-        self.save_close_button.pack(side="left", expand=True, fill="x", padx=(10, 0))
-
+        
         # ====================================================
         # Currency Settings Section
         # ====================================================
@@ -217,6 +161,7 @@ class ScraperOptionsWindow(ctk.CTkToplevel):
         self.currency_menu = ctk.CTkOptionMenu(
             self.scroll_frame, 
             variable=self.currency_var,
+            command=self.update_currency_selection,
             values=[
                 "🇺🇸 USD - US Dollar", "🇪🇺 EUR - Euro", "🇬🇧 GBP - British Pound", 
                 "🇯🇵 JPY - Japanese Yen", "🇨🇳 CNY - Chinese Yuan", "🇨🇦 CAD - Canadian Dollar",
@@ -292,9 +237,213 @@ class ScraperOptionsWindow(ctk.CTkToplevel):
         self.custom_format_frame.pack_forget()
 
         # ====================================================
+        # Currency Converter Mini Calculator
+        # ====================================================
+        converter_frame = ctk.CTkFrame(self.scroll_frame, fg_color=("gray85", "gray25"), corner_radius=10)
+        converter_frame.pack(fill="x", padx=5, pady=(10, 5))
+
+        converter_title = ctk.CTkLabel(
+            converter_frame,
+            text="💱 Currency Converter (to EUR)",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            text_color=("#3B82F6", "#60A5FA")
+        )
+        converter_title.pack(pady=(8, 5))
+
+        input_row = ctk.CTkFrame(converter_frame, fg_color="transparent")
+        input_row.pack(fill="x", padx=10, pady=5)
+
+        self.converter_amount_entry = ctk.CTkEntry(
+            input_row,
+            placeholder_text="Enter amount...",
+            width=120,
+            font=ctk.CTkFont(size=13)
+        )
+        self.converter_amount_entry.pack(side="left", padx=(0, 5))
+
+        self.converter_from_currency = ctk.CTkOptionMenu(
+            input_row,
+            values=[
+                "USD", "EUR", "GBP", "JPY", "CNY", "CAD", "AUD", "CHF", "BGN",
+                "BRL", "CZK", "DKK", "HKD", "HUF", "INR", "IDR", "ILS", "KRW",
+                "MYR", "MXN", "NZD", "NOK", "PHP", "PLN", "RON", "RUB", "SGD",
+                "ZAR", "SEK", "THB", "TRY", "AED"
+            ],
+            width=80,
+            font=ctk.CTkFont(size=13)
+        )
+        self.converter_from_currency.pack(side="left", padx=5)
+        self.converter_from_currency.set(self.settings_manager.get('preferred_currency', 'BGN') if self.settings_manager else "BGN")
+
+        ctk.CTkLabel(input_row, text="→ EUR", font=ctk.CTkFont(size=13, weight="bold")).pack(side="left", padx=5)
+
+        self.convert_button = ctk.CTkButton(
+            input_row,
+            text="Convert",
+            command=self._convert_currency,
+            width=70,
+            height=28,
+            font=ctk.CTkFont(size=12, weight="bold"),
+            fg_color="#3B82F6",
+            hover_color="#2563EB"
+        )
+        self.convert_button.pack(side="left", padx=5)
+
+        result_row = ctk.CTkFrame(converter_frame, fg_color="transparent")
+        result_row.pack(fill="x", padx=10, pady=(0, 10))
+
+        self.converter_result = ctk.CTkLabel(
+            result_row,
+            text="",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            text_color="green"
+        )
+        self.converter_result.pack(side="left")
+
+        preset_frame = ctk.CTkFrame(converter_frame, fg_color="transparent")
+        preset_frame.pack(fill="x", padx=10, pady=(0, 10))
+
+        ctk.CTkLabel(preset_frame, text="Quick presets:", font=ctk.CTkFont(size=11)).pack(side="left", padx=(0, 5))
+
+        for preset in [10, 50, 100, 500, 1000]:
+            preset_btn = ctk.CTkButton(
+                preset_frame,
+                text=str(preset),
+                width=40,
+                height=25,
+                font=ctk.CTkFont(size=11),
+                fg_color="gray",
+                hover_color="#4B5563",
+                command=lambda x=preset: self._set_preset_amount(x)
+            )
+            preset_btn.pack(side="left", padx=2)
+
+        info_label = ctk.CTkLabel(
+            converter_frame,
+            text="💡 Use this tool to convert your target prices to EUR\nfor setting min/max boundaries below",
+            font=ctk.CTkFont(size=11),
+            text_color=("gray40", "gray60"),
+            justify="center"
+        )
+        info_label.pack(pady=(0, 8))
+
+        # ====================================================
+        # Output & Logging Section
+        # ====================================================
+        ctk.CTkLabel(
+            self.scroll_frame, text="Output & Logging", font=ctk.CTkFont(size=18, weight="bold")
+        ).pack(anchor="w", pady=(20, 5))
+
+        ctk.CTkLabel(self.scroll_frame, text="Save Results As:").pack(anchor="w", padx=5)
+        self.output_format_var = ctk.StringVar(value="JSON")
+        self.output_format_menu = ctk.CTkOptionMenu(
+            self.scroll_frame, variable=self.output_format_var, values=["JSON", "CSV", "Excel"]
+        )
+        self.output_format_menu.pack(padx=5, pady=5, fill="x")
+
+        self.debug_switch = ctk.CTkSwitch(
+            self.scroll_frame,
+            text="Enable Debug Logs",
+            text_color=("black", "white"),
+            button_color=("#F5DBBD", "#1A1A1A"),
+            button_hover_color=("#E0CFAF", "#2D2D2D")
+            )
+        self.debug_switch.pack(anchor="w", padx=5, pady=10)
+
+        self.auto_close_switch = ctk.CTkSwitch(self.scroll_frame, text="Auto-close browser after scraping",
+                                                           text_color=("black", "white"),
+            button_color=("#F5DBBD", "#1A1A1A"),
+            button_hover_color=("#E0CFAF", "#2D2D2D"))
+        self.auto_close_switch.pack(anchor="w", padx=5, pady=10)
+
+        # ====================================================
+        # Buttons
+        # ====================================================
+        button_frame = ctk.CTkFrame(self)
+        button_frame.pack(pady=15, padx=20, fill="x")
+
+        self.apply_button = ctk.CTkButton(
+            button_frame,
+            text="✅ Apply Settings",
+            height=80,
+            corner_radius=12,
+            fg_color="#3B82F6",
+            hover_color="#2563EB",
+            command=self.apply_settings
+        )
+        self.apply_button.pack(side="left", expand=True, fill="x", padx=(0, 10))
+
+        self.save_close_button = ctk.CTkButton(
+            button_frame,
+            text="💾 Save & Close",
+            height=80,
+            corner_radius=12,
+            fg_color="#22C55E",
+            hover_color="#16A34A",
+            command=self.save_and_close
+        )
+        self.save_close_button.pack(side="left", expand=True, fill="x", padx=(10, 0))
+
+        # ====================================================
         # Load current settings after UI is created
         # ====================================================
         self.load_current_settings()
+
+    def _convert_currency(self):
+        """Convert the entered amount to EUR"""
+        try:
+            amount_text = self.converter_amount_entry.get().strip()
+            if not amount_text:
+                self.converter_result.configure(
+                    text="Please enter an amount",
+                    text_color="orange"
+                )
+                return
+            
+            # Convert to float
+            try:
+                amount = float(amount_text.replace(',', '.'))
+            except ValueError:
+                self.converter_result.configure(
+                    text="Invalid number format",
+                    text_color="red"
+                )
+                return
+            
+            from_currency = self.converter_from_currency.get()
+            
+            converted = self.converter.convert_currency(amount, from_currency, "EUR")
+            
+            if converted:
+                if converted >= 1000:
+                    result_text = f"{amount:,.2f} {from_currency} = {converted:,.2f} EUR"
+                elif converted >= 1:
+                    result_text = f"{amount:.2f} {from_currency} = {converted:.2f} EUR"
+                else:
+                    result_text = f"{amount:.2f} {from_currency} = {converted:.4f} EUR"
+                
+                self.converter_result.configure(
+                    text=result_text,
+                    text_color="green"
+                )
+                
+            else:
+                self.converter_result.configure(
+                    text=f"Conversion failed for {from_currency} → EUR",
+                    text_color="red"
+                )
+                
+        except Exception as e:
+            self.converter_result.configure(
+                text=f"Error: {str(e)}",
+                text_color="red"
+            )
+
+    def _set_preset_amount(self, amount):
+        """Set a preset amount in the converter input"""
+        self.converter_amount_entry.delete(0, 'end')
+        self.converter_amount_entry.insert(0, str(amount))
+        self._convert_currency() 
 
     def _toggle_custom_format(self):
         """Show/hide custom format entry based on radio selection"""
@@ -303,6 +452,17 @@ class ScraperOptionsWindow(ctk.CTkToplevel):
         else:
             self.custom_format_frame.pack_forget()
     
+    def update_currency_selection(self, selected):
+        """Update the converter currency when main currency selection changes"""
+        currency_code = self.currency_mapping.get(selected.split(" - ")[0], "BGN")
+    
+        self.converter_from_currency.set(currency_code)
+    
+        print(f"🔄 Currency updated to: {currency_code}")
+    
+        if self.settings_manager:
+            self.settings_manager.set('preferred_currency', currency_code)
+
     def load_current_settings(self):
         """Load current scraper settings into the UI from the first scraper in container"""
         if not self.scraper_container or not self.scraper_container.scraper_list:
