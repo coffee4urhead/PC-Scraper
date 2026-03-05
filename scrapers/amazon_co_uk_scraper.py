@@ -88,7 +88,7 @@ class AmazonCoUkScraper(AsyncPlaywrightBaseScraper):
         except Exception as e:
             print(f"DEBUG: Error extracting product links from Amazon.co.uk: {e}")
             return []
-
+    
     async def _extract_product_data(self, page, product_url):
         """Extract detailed information using Playwright"""
         print(f"DEBUG: Parsing Amazon.co.uk product: {product_url}")
@@ -123,7 +123,7 @@ class AmazonCoUkScraper(AsyncPlaywrightBaseScraper):
                 
                 price_text = f"{whole_part}.{fraction_part}"
                 try:
-                    clean_price = price_text.replace('£', '').replace('$', '').replace(',', '').strip()
+                    clean_price = price_text.replace('£', '').replace('$', '').replace(',', '').replace('\n', '').strip()
                     price = float(clean_price)
                 except ValueError:
                     print(f"DEBUG: Could not convert price: '{price_text}'")
@@ -153,6 +153,7 @@ class AmazonCoUkScraper(AsyncPlaywrightBaseScraper):
                     print(f"DEBUG: No price found for product: {title}")
 
             target_currency = self.settings_manager.get('preferred_currency', "BGN")
+            print(f"DEBUG: Converting price {price} {self.website_currency} to {target_currency}")
             converted_price = float(self._convert_prices_only(price, self.website_currency, target_currency))
             print(price)
             if converted_price is not None:
