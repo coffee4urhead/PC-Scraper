@@ -7,44 +7,58 @@ on:
 
 jobs:
   build:
-
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
 
     runs-on: ${{ matrix.os }}
 
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: 0
+
     steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-    - name: Checkout repo
-      uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
 
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.11"
+      - name: Install Linux system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y portaudio19-dev python3-dev
 
-    - name: Install dependencies
-      run: |
-        pip install -r requirements.txt
-        pip install pyinstaller playwright pillow pygame customtkinter
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
 
-    - name: Install Playwright Browsers
-      run: |
-        python -m playwright install chromium
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller playwright pillow pygame customtkinter
 
-    - name: Build Linux
-      if: runner.os == 'Linux'
-      run: |
-        python build.py linux
+      - name: Install Playwright browsers
+        run: |
+          python -m playwright install chromium
 
-    - name: Build Windows
-      if: runner.os == 'Windows'
-      run: |
-        python build.py windows
+      - name: Build Windows
+        if: runner.os == 'Windows'
+        run: |
+          python build.py windows
 
-    - name: Upload build
-      uses: actions/upload-artifact@v4
-      with:
-        name: pc-scraper-${{ runner.os }}
-        path: dist/
+      - name: Build Linux
+        if: runner.os == 'Linux'
+        run: |
+          python build.py linux
+
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: pc-scraper-${{ runner.os }}
+          path: dist/
