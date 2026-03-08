@@ -20,6 +20,36 @@ def clean_build():
         print(f"Removed {f}")
     print("Clean complete.\n")
 
+def find_and_bundle_playwright_browsers():
+    """Find Playwright browsers and copy to local directory for bundling"""
+    import shutil
+    
+    browser_locations = [
+        os.path.expanduser("~/.cache/ms-playwright"), 
+        os.path.expanduser("~/Library/Caches/ms-playwright"),  
+        os.path.join(os.environ.get('LOCALAPPDATA', ''), 'ms-playwright'), 
+        os.path.join(os.environ.get('USERPROFILE', ''), 'AppData', 'Local', 'ms-playwright'),  # Windows alternative
+    ]
+    
+    for location in browser_locations:
+        if os.path.exists(location):
+            print(f"📁 Found Playwright cache at: {location}")
+            
+            for item in os.listdir(location):
+                if 'chromium' in item.lower():
+                    src_path = os.path.join(location, item)
+                    dst_path = os.path.join(os.getcwd(), '.local-browsers', item)
+                    
+                    os.makedirs(os.path.dirname(dst_path), exist_ok=True)
+                    if os.path.isdir(src_path):
+                        print(f"📦 Copying {item} to .local-browsers/...")
+                        shutil.copytree(src_path, dst_path, dirs_exist_ok=True)
+                        print(f"✅ Bundled {item}")
+                        return True
+    
+    print("⚠️ No Playwright browsers found to bundle")
+    return False
+
 def get_playwright_path():
     local_path = ".local-browsers"
     cache_path = os.path.expanduser("~/.cache/ms-playwright")
@@ -55,6 +85,7 @@ def pyinstaller_cmd(name, entry_script, console=True, extra_data=None):
     return cmd
 
 def build_windows(console=False):
+    find_and_bundle_playwright_browsers()
     name="PC-Scraper-Console" if console else "PC-Scraper"
     cmd=pyinstaller_cmd(name,"pc-scraper-gui.py",console=console,extra_data=[("images","images"),("Music","Music")])
     subprocess.run(cmd,check=True)
@@ -72,6 +103,7 @@ pause
             f.write(ps)
 
 def build_linux():
+    find_and_bundle_playwright_browsers()
     cmd=pyinstaller_cmd("pc-scraper","pc-scraper-gui.py",console=True,extra_data=[("images","images"),("Music","Music")])
     subprocess.run(cmd,check=True)
     icon_dir="dist/icons/hicolor"
