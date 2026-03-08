@@ -23,17 +23,20 @@ def clean_build():
 def find_and_bundle_playwright_browsers():
     """Find Playwright browsers and copy to local directory for bundling"""
     import shutil
+    import os
+    
+    print("[INFO] Looking for Playwright browsers to bundle...")
     
     browser_locations = [
-        os.path.expanduser("~/.cache/ms-playwright"), 
-        os.path.expanduser("~/Library/Caches/ms-playwright"),  
-        os.path.join(os.environ.get('LOCALAPPDATA', ''), 'ms-playwright'), 
-        os.path.join(os.environ.get('USERPROFILE', ''), 'AppData', 'Local', 'ms-playwright'),  # Windows alternative
+        os.path.expanduser("~/.cache/ms-playwright"),  
+        os.path.expanduser("~/Library/Caches/ms-playwright"),
+        os.path.join(os.environ.get('LOCALAPPDATA', ''), 'ms-playwright'),
+        os.path.join(os.environ.get('USERPROFILE', ''), 'AppData', 'Local', 'ms-playwright'),  
     ]
     
     for location in browser_locations:
         if os.path.exists(location):
-            print(f"📁 Found Playwright cache at: {location}")
+            print(f"[FOUND] Playwright cache at: {location}")
             
             for item in os.listdir(location):
                 if 'chromium' in item.lower():
@@ -42,12 +45,16 @@ def find_and_bundle_playwright_browsers():
                     
                     os.makedirs(os.path.dirname(dst_path), exist_ok=True)
                     if os.path.isdir(src_path):
-                        print(f"📦 Copying {item} to .local-browsers/...")
-                        shutil.copytree(src_path, dst_path, dirs_exist_ok=True)
-                        print(f"✅ Bundled {item}")
-                        return True
+                        print(f"[COPYING] Bundling {item}...")
+                        try:
+                            shutil.copytree(src_path, dst_path, dirs_exist_ok=True, ignore_errors=True)
+                            print(f"[SUCCESS] Bundled {item}")
+                            return True
+                        except Exception as e:
+                            print(f"[ERROR] Failed to copy {item}: {e}")
+                            return False
     
-    print("⚠️ No Playwright browsers found to bundle")
+    print("[WARNING] No Playwright browsers found to bundle")
     return False
 
 def get_playwright_path():
