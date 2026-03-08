@@ -1,0 +1,50 @@
+name: Build PC-Scraper
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+
+    - name: Checkout repo
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+        pip install pyinstaller playwright pillow pygame customtkinter
+
+    - name: Install Playwright Browsers
+      run: |
+        python -m playwright install chromium
+
+    - name: Build Linux
+      if: runner.os == 'Linux'
+      run: |
+        python build.py linux
+
+    - name: Build Windows
+      if: runner.os == 'Windows'
+      run: |
+        python build.py windows
+
+    - name: Upload build
+      uses: actions/upload-artifact@v4
+      with:
+        name: pc-scraper-${{ runner.os }}
+        path: dist/

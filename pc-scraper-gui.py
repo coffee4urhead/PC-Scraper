@@ -34,7 +34,9 @@ def resource_path(relative_path):
 
 class GUI(ctk.CTk):
     def __init__(self):
+        print("1. Starting GUI initialization")
         super().__init__()
+        print("2. CTk superclass initialized")
 
         print("=" * 60)
         print("PC SCRAPER - INITIALIZING")
