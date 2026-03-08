@@ -1,5 +1,4 @@
 def _ensure_playwright_browsers(self):
-    """Ensure Playwright browsers are installed - NON-INTERACTIVE version for packaged app"""
     import subprocess
     import sys
     import os
@@ -83,8 +82,8 @@ def _ensure_playwright_browsers(self):
             print("\nThe browsers will be installed to:")
             print(f"   {base_path}")
             print("\n" + "!" * 60)
-        
-            return True
+            
+            return False
         else:
             print("📦 Attempting to install Playwright browsers (development mode)...")
             try:
@@ -115,7 +114,7 @@ def _ensure_playwright_browsers(self):
             print("2. Run: pip install playwright")
             print("3. Run: playwright install chromium")
             print("!" * 60)
-            return True  
+            return False
         else:
             print("📦 Installing Playwright...")
             try:
