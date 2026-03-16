@@ -70,41 +70,95 @@ def _ensure_playwright_browsers(self):
         for root, dirs, files in os.walk(base_path):
             if 'chromium' in root.lower():
                 for file in files:
-                    if file.lower() == 'chrome' or 'chrome' in file.lower():
+                    if file.lower() == 'chrome' and 'wrapper' not in file.lower():
                         full_path = os.path.join(root, file)
                         if os.path.exists(full_path):
-                            os.chmod(full_path, 0o755) 
+                            os.chmod(full_path, 0o755)
                             chromium_executable = full_path
                             chromium_revision = os.path.basename(os.path.dirname(root))
                             browsers_exist = True
                             print(f"✅ Found Chromium executable at: {full_path}")
                             break
+                
+                if not chromium_executable:
+                    for sub_root, sub_dirs, sub_files in os.walk(root):
+                        for file in sub_files:
+                            if file.lower() == 'chrome' and 'wrapper' not in file.lower():
+                                full_path = os.path.join(sub_root, file)
+                                if os.path.exists(full_path):
+                                    os.chmod(full_path, 0o755)
+                                    chromium_executable = full_path
+                                    chromium_revision = os.path.basename(os.path.dirname(root))
+                                    browsers_exist = True
+                                    print(f"✅ Found Chromium executable at: {full_path}")
+                                    break
+                        if chromium_executable:
+                            break
+                
                 if browsers_exist:
                     break
         
         if browsers_exist and chromium_executable:
             print("✅ Playwright browsers found and ready")
             
+            os.environ['LD_LIBRARY_PATH'] = os.path.dirname(chromium_executable) + ':' + os.environ.get('LD_LIBRARY_PATH', '')
+            
             try:
                 from playwright.sync_api import sync_playwright
                 with sync_playwright() as p:
                     browser = p.chromium.launch(
                         headless=True,
-                        executable_path=chromium_executable if is_frozen else None
+                        executable_path=chromium_executable,
+                        args=[
+                            '--no-sandbox',
+                            '--disable-setuid-sandbox',
+                            '--disable-dev-shm-usage',
+                            '--disable-gpu',
+                            '--disable-features=UseOzonePlatform',
+                            '--ozone-platform-hint=x11'
+                        ]
                     )
                     browser.close()
                     print("✅ Browser launched successfully")
                 return True
             except Exception as e:
-                print(f"⚠️ Browser verification failed: {e}")
+                print(f"⚠️ Browser verification failed with executable path: {e}")
+                
                 try:
                     from playwright.sync_api import sync_playwright
                     with sync_playwright() as p:
-                        p.chromium.launch(headless=True).close()
+                        browser = p.chromium.launch(
+                            headless=True,
+                            args=[
+                                '--no-sandbox',
+                                '--disable-setuid-sandbox',
+                                '--disable-dev-shm-usage',
+                                '--disable-gpu'
+                            ]
+                        )
+                        browser.close()
                         print("✅ Browser launched successfully (standard method)")
                     return True
                 except Exception as e2:
                     print(f"⚠️ Second attempt failed: {e2}")
+                    
+                    try:
+                        system_chrome = shutil.which('google-chrome') or shutil.which('chrome') or shutil.which('chromium')
+                        if system_chrome:
+                            print(f"📦 Trying system Chrome at: {system_chrome}")
+                            from playwright.sync_api import sync_playwright
+                            with sync_playwright() as p:
+                                browser = p.chromium.launch(
+                                    headless=True,
+                                    executable_path=system_chrome,
+                                    args=['--no-sandbox', '--disable-dev-shm-usage']
+                                )
+                                browser.close()
+                                print("✅ System Chrome launched successfully")
+                            return True
+                    except:
+                        pass
+                    
                     return False
         
         print("⚠️ Playwright browsers not found")
@@ -138,11 +192,10 @@ def _ensure_playwright_browsers(self):
             if response == 'y':
                 print("\n📦 Installing Playwright and browsers...")
                 try:
-                    print("  → Installing Playwright package...")
                     subprocess.run([sys.executable, '-m', 'pip', 'install', 'playwright'], 
                                  check=True, capture_output=True)
                     
-                    print("  → Downloading Chromium browser (this may take a few minutes)...")
+                    print("  → Downloading Chromium browser...")
                     result = subprocess.run(
                         [sys.executable, '-m', 'playwright', 'install', 'chromium'],
                         capture_output=True,
@@ -172,38 +225,25 @@ def _ensure_playwright_browsers(self):
                                     dst = os.path.join(base_path, item)
                                     if os.path.isdir(src):
                                         shutil.copytree(src, dst, dirs_exist_ok=True)
+
                                         for froot, fdirs, ffiles in os.walk(dst):
                                             for file in ffiles:
-                                                if file in ['chrome', 'chrome.exe']:
+                                                if file == 'chrome':
                                                     os.chmod(os.path.join(froot, file), 0o755)
-                                            print(f"    ✅ Copied {item}")
+                                                    print(f"    ✅ Made executable: {os.path.join(froot, file)}")
                         
-                        print("\n✅ Installation complete! Restarting browser check...")
+                        print("\n✅ Installation complete!")
                         return self._ensure_playwright_browsers()
                     else:
                         print(f"❌ Installation failed: {result.stderr}")
-                        print("\nPlease install manually with:")
-                        print("  pip install playwright")
-                        print("  python -m playwright install chromium")
                         return False
                         
-                except subprocess.TimeoutExpired:
-                    print("❌ Installation timed out. Please check your internet connection.")
-                    return False
                 except Exception as e:
                     print(f"❌ Installation failed: {e}")
-                    print("\nPlease install manually with:")
-                    print("  pip install playwright")
-                    print("  python -m playwright install chromium")
                     return False
             else:
-                print("\n❌ Installation cancelled by user.")
-                print("\nPlease install manually with:")
-                print("  pip install playwright")
-                print("  python -m playwright install chromium")
-                print(f"\nBrowsers must be installed to: {base_path}")
+                print("\n❌ Installation cancelled.")
                 return False
-            
         else:
             print("📦 Attempting to install Playwright browsers (development mode)...")
             try:
@@ -230,9 +270,7 @@ def _ensure_playwright_browsers(self):
             print("\n" + "!" * 60)
             print("PLAYWRIGHT NOT AVAILABLE")
             print("!" * 60)
-            print("\nThis application requires Playwright but it's not available.")
-            print("Please reinstall the application or contact support.")
-            print("\n" + "!" * 60)
+            print("\nPlease run: pip install playwright")
             return False
         else:
             print("📦 Installing Playwright...")
@@ -253,7 +291,7 @@ def _show_installation_dialog(self):
         from tkinter import messagebox
         
         root = tk.Tk()
-        root.withdraw()  
+        root.withdraw()
         
         response = messagebox.askyesno(
             "PC-Scraper - Browser Installation Required",
