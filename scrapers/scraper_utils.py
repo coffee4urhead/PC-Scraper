@@ -126,17 +126,84 @@ def _ensure_playwright_browsers(self):
             print("\n" + "!" * 60)
             print("PLAYWRIGHT BROWSERS NEED TO BE INSTALLED")
             print("!" * 60)
-            print("\nThis application requires Playwright browsers to function.")
-            print("\nPlease run the following command in your terminal:")
-            print(f"\n   playwright install chromium\n")
-            print("Or if that doesn't work, try:")
-            print("\n   python3 -m playwright install chromium\n")
-            print("\nThe browsers will be installed to:")
-            print(f"   {base_path}")
-            print("\nAfter installation, restart this application.")
-            print("\n" + "!" * 60)
+            print("\nPC-Scraper needs to install browser components to function.")
+            print("This is a one-time setup that will download approximately 200MB.")
+            print(f"\nBrowsers will be installed to: {base_path}")
             
-            return False
+            try:
+                response = input("\nInstall now? (y/n): ").lower().strip()
+            except:
+                response = self._show_installation_dialog()
+            
+            if response == 'y':
+                print("\n📦 Installing Playwright and browsers...")
+                try:
+                    print("  → Installing Playwright package...")
+                    subprocess.run([sys.executable, '-m', 'pip', 'install', 'playwright'], 
+                                 check=True, capture_output=True)
+                    
+                    print("  → Downloading Chromium browser (this may take a few minutes)...")
+                    result = subprocess.run(
+                        [sys.executable, '-m', 'playwright', 'install', 'chromium'],
+                        capture_output=True,
+                        text=True,
+                        timeout=600
+                    )
+                    
+                    if result.returncode == 0:
+                        print("  ✅ Chromium downloaded successfully")
+                        
+                        browser_source = None
+                        possible_paths = [
+                            os.path.expanduser("~/.cache/ms-playwright"),
+                            os.path.expanduser("~/.cache/playwright"),
+                        ]
+                        
+                        for path in possible_paths:
+                            if os.path.exists(path):
+                                browser_source = path
+                                break
+                        
+                        if browser_source:
+                            print(f"  📋 Copying browsers to app directory...")
+                            for item in os.listdir(browser_source):
+                                if 'chromium' in item.lower():
+                                    src = os.path.join(browser_source, item)
+                                    dst = os.path.join(base_path, item)
+                                    if os.path.isdir(src):
+                                        shutil.copytree(src, dst, dirs_exist_ok=True)
+                                        for froot, fdirs, ffiles in os.walk(dst):
+                                            for file in ffiles:
+                                                if file in ['chrome', 'chrome.exe']:
+                                                    os.chmod(os.path.join(froot, file), 0o755)
+                                            print(f"    ✅ Copied {item}")
+                        
+                        print("\n✅ Installation complete! Restarting browser check...")
+                        return self._ensure_playwright_browsers()
+                    else:
+                        print(f"❌ Installation failed: {result.stderr}")
+                        print("\nPlease install manually with:")
+                        print("  pip install playwright")
+                        print("  python -m playwright install chromium")
+                        return False
+                        
+                except subprocess.TimeoutExpired:
+                    print("❌ Installation timed out. Please check your internet connection.")
+                    return False
+                except Exception as e:
+                    print(f"❌ Installation failed: {e}")
+                    print("\nPlease install manually with:")
+                    print("  pip install playwright")
+                    print("  python -m playwright install chromium")
+                    return False
+            else:
+                print("\n❌ Installation cancelled by user.")
+                print("\nPlease install manually with:")
+                print("  pip install playwright")
+                print("  python -m playwright install chromium")
+                print(f"\nBrowsers must be installed to: {base_path}")
+                return False
+            
         else:
             print("📦 Attempting to install Playwright browsers (development mode)...")
             try:
@@ -178,3 +245,26 @@ def _ensure_playwright_browsers(self):
     except Exception as e:
         print(f"❌ Unexpected error in browser check: {e}")
         return False
+
+def _show_installation_dialog(self):
+    """Fallback GUI dialog for when console input isn't available"""
+    try:
+        import tkinter as tk
+        from tkinter import messagebox
+        
+        root = tk.Tk()
+        root.withdraw()  
+        
+        response = messagebox.askyesno(
+            "PC-Scraper - Browser Installation Required",
+            "PC-Scraper needs to install browser components to function.\n\n"
+            "This is a one-time setup that will download approximately 200MB.\n"
+            "An internet connection is required.\n\n"
+            "Install now?",
+            icon='question'
+        )
+        
+        root.destroy()
+        return 'y' if response else 'n'
+    except:
+        return 'n'
