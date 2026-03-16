@@ -3,6 +3,7 @@ def _ensure_playwright_browsers(self):
     import sys
     import os
     import platform
+    import shutil
     
     print("\n" + "=" * 60)
     print("🔍 PLAYWRIGHT BROWSER CHECK")
@@ -18,6 +19,10 @@ def _ensure_playwright_browsers(self):
         print(f"💻 Platform: sys.platform={sys.platform}, is_windows={is_windows}, is_wine={is_wine}")
         
         if is_frozen:
+            executable_dir = os.path.dirname(sys.executable)
+            
+            bundled_browsers = os.path.join(executable_dir, '.local-browsers')
+            
             if is_windows or is_wine:
                 base_path = os.path.join(
                     os.environ.get('APPDATA', os.path.expanduser('~')),
@@ -28,6 +33,26 @@ def _ensure_playwright_browsers(self):
                     os.path.expanduser('~'),
                     '.cache', 'pc-scraper', 'browsers'
                 )
+            
+            if os.path.exists(bundled_browsers):
+                print(f"📦 Found bundled browsers at: {bundled_browsers}")
+                print(f"📋 Copying to: {base_path}")
+                
+                os.makedirs(base_path, exist_ok=True)
+                
+                for item in os.listdir(bundled_browsers):
+                    src = os.path.join(bundled_browsers, item)
+                    dst = os.path.join(base_path, item)
+                    if os.path.isdir(src):
+                        shutil.copytree(src, dst, dirs_exist_ok=True)
+                        print(f"  ✅ Copied {item}")
+                    else:
+                        shutil.copy2(src, dst)
+                        print(f"  ✅ Copied {item}")
+                        
+                print("✅ Bundled browsers extracted successfully")
+            else:
+                print("⚠️ No bundled browsers found in executable directory")
         else:
             base_path = os.path.join(
                 os.path.dirname(os.path.abspath(__file__)),
@@ -47,7 +72,8 @@ def _ensure_playwright_browsers(self):
                 for file in files:
                     if file.lower() == 'chrome' or 'chrome' in file.lower():
                         full_path = os.path.join(root, file)
-                        if os.access(full_path, os.X_OK):
+                        if os.path.exists(full_path):
+                            os.chmod(full_path, 0o755) 
                             chromium_executable = full_path
                             chromium_revision = os.path.basename(os.path.dirname(root))
                             browsers_exist = True
@@ -57,29 +83,52 @@ def _ensure_playwright_browsers(self):
                     break
         
         if browsers_exist and chromium_executable:
-            print("✅ Playwright browsers found in cache")
-            print(f"✅ Browser executable is executable and ready to use")
+            print("✅ Playwright browsers found and ready")
             
             try:
                 from playwright.sync_api import sync_playwright
                 with sync_playwright() as p:
-                    p.chromium.launch(headless=True).close()
+                    browser = p.chromium.launch(
+                        headless=True,
+                        executable_path=chromium_executable if is_frozen else None
+                    )
+                    browser.close()
                     print("✅ Browser launched successfully")
                 return True
             except Exception as e:
                 print(f"⚠️ Browser verification failed: {e}")
-                print("⚠️ Browser files may be corrupt")
-                return False
+                try:
+                    from playwright.sync_api import sync_playwright
+                    with sync_playwright() as p:
+                        p.chromium.launch(headless=True).close()
+                        print("✅ Browser launched successfully (standard method)")
+                    return True
+                except Exception as e2:
+                    print(f"⚠️ Second attempt failed: {e2}")
+                    return False
         
-        print("⚠️ Playwright browsers not found or broken")
+        print("⚠️ Playwright browsers not found")
         
         if is_frozen:
+            print("Attempting to locate browsers in alternate locations...")
+            alternate_paths = [
+                os.path.join(executable_dir, 'playwright'),
+                os.path.join(executable_dir, 'browsers'),
+                os.path.join(executable_dir, '_internal', '.local-browsers'),
+            ]
+            
+            for alt_path in alternate_paths:
+                if os.path.exists(alt_path):
+                    print(f"Found alternate browser location: {alt_path}")
+                    shutil.copytree(alt_path, base_path, dirs_exist_ok=True)
+                    return self._ensure_playwright_browsers()
+            
             print("\n" + "!" * 60)
             print("PLAYWRIGHT BROWSERS NEED TO BE INSTALLED")
             print("!" * 60)
             print("\nThis application requires Playwright browsers to function.")
             print("\nPlease run the following command in your terminal:")
-            print(f"\n   {sys.executable} -m playwright install chromium\n")
+            print(f"\n   playwright install chromium\n")
             print("Or if that doesn't work, try:")
             print("\n   python3 -m playwright install chromium\n")
             print("\nThe browsers will be installed to:")
