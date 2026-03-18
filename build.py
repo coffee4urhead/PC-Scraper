@@ -145,6 +145,8 @@ def pyinstaller_cmd(name, entry_script, console=True, extra_data=None):
     icon = "images/scraper-icon.ico" if platform.system()=="Windows" else "images/scraper-icon.jpeg"
     if os.path.exists(icon):
         cmd.extend(["--icon",icon])
+    
+    cmd.append(entry_script)
     return cmd
 
 def get_scraper_modules():
