@@ -112,11 +112,7 @@ class AllStoreScraper(AsyncPlaywrightBaseScraper):
             else:
                 print("DEBUG: No price element found")
 
-            converted_price = float(self._convert_prices_only(price, self.website_currency, self.settings_manager.get('preferred_currency', "BGN")))
-            
-            if self._should_filter_by_price({'price': converted_price}):
-                print(f'Skipped product because it was not in the range of the price filter: {self.converted_min:.2f} - {self.converted_max:.2f} {self.target_currency}')
-                return None
+            price = self.convert_where_necessary(price)
             
             title_element = await page.query_selector('div.c-product-page__product-name-wrapper h1')
             title = ""

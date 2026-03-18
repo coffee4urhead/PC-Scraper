@@ -42,7 +42,7 @@ class AsyncPlaywrightBaseScraper(ABC):
         self.original_min_price = self._safe_float_conversion(raw_min, 0)
         self.original_max_price = self._safe_float_conversion(raw_max, float('inf'))
         
-        self.target_currency = self.settings_manager.get('preferred_currency', "BGN")
+        self.preferred_currency = self.settings_manager.get('preferred_currency', "EUR")
         
         self.converted_min = self.original_min_price
         self.converted_max = self.original_max_price
@@ -75,18 +75,18 @@ class AsyncPlaywrightBaseScraper(ABC):
 
     def _update_converted_prices(self):
         """Update converted price values based on current settings"""
-        target_currency = self.settings_manager.get('preferred_currency', "BGN")
+        target_currency = "EUR"
         
-        if self.website_currency != target_currency:
+        if self.preferred_currency != target_currency:
             if self.original_min_price > 0:
-                converted = self._convert_prices_only(self.original_min_price, self.website_currency, target_currency)
+                converted = self._convert_prices_only(self.original_min_price, self.preferred_currency, target_currency)
                 self.converted_min = float(converted) if converted is not None else self.original_min_price
                 print(f"DEBUG: Converted min_price to {self.converted_min} {target_currency}")
             else:
                 self.converted_min = self.original_min_price
                 
             if self.original_max_price != float('inf') and self.original_max_price > 0:
-                converted = self._convert_prices_only(self.original_max_price, self.website_currency, target_currency)
+                converted = self._convert_prices_only(self.original_max_price, self.preferred_currency, target_currency)
                 self.converted_max = float(converted) if converted is not None else self.original_max_price
                 print(f"DEBUG: Converted max_price to {self.converted_max} {target_currency}")
             else:
@@ -94,6 +94,15 @@ class AsyncPlaywrightBaseScraper(ABC):
         else:
             self.converted_min = self._convert_prices_only(self.original_min_price, "EUR", target_currency)
             self.converted_max = self._convert_prices_only(self.original_max_price, "EUR", target_currency)
+
+    def convert_where_necessary(self, price):
+        converted_price = float(self._convert_prices_only(price, self.website_currency, "EUR"))
+        if converted_price is not None:
+            if self._should_filter_by_price({'price': converted_price}):
+                print(f'Skipped product because it was not in the range of the price filter: {self.converted_min:.2f} - {self.converted_max:.2f} EUR')
+                return None
+        else:
+            print(f"DEBUG: Could not convert price {price} {self.website_currency} to EUR")
 
     def update_settings(self, min_price=None, max_price=None, exclude_keywords=None):
         """Update scraper settings and re-convert if needed"""

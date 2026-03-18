@@ -247,15 +247,7 @@ class ArdesScraper(AsyncPlaywrightBaseScraper):
                 else:
                     print("DEBUG: Price element not found")
                 
-                target_currency = self.settings_manager.get('preferred_currency', "BGN")
-                converted_price = float(self._convert_prices_only(price, self.website_currency, target_currency))
-
-                if converted_price is not None:
-                    if self._should_filter_by_price({'price': converted_price}):
-                        print(f'Skipped product because it was not in the range of the price filter: {self.converted_min:.2f} - {self.converted_max:.2f} {self.target_currency}')
-                        return None
-                else:
-                    print(f"DEBUG: Could not convert price {price} {self.website_currency} to {target_currency}")
+                price = self.convert_where_necessary(price)
 
                 product_data = {}
                 tech_specs_list = await page.query_selector('ul.tech-specs-list')

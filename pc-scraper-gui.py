@@ -1,4 +1,6 @@
 import asyncio
+import subprocess
+import venv
 import customtkinter as ctk
 from tkinter import filedialog
 from dotenv import load_dotenv
@@ -35,16 +37,27 @@ def resource_path(relative_path):
 class GUI(ctk.CTk):
     def __init__(self):
         print("1. Starting GUI initialization")
+        
+        self._setup_virtual_environment()
+        
         super().__init__()
         print("2. CTk superclass initialized")
-
+        
         print("=" * 60)
         print("PC SCRAPER - INITIALIZING")
         print("=" * 60)
         
         try:
             from scrapers.scraper_utils import _ensure_playwright_browsers
+            import platform
+
             print("🔍 Checking Playwright browsers...")
+            
+            is_windows = sys.platform.startswith('win') or 'windows' in platform.system().lower()
+            
+            if is_windows:
+                current_dir = os.curdir
+                pass
             browsers_ready = _ensure_playwright_browsers(self)
             if browsers_ready:
                 print("✅ Playwright browsers are ready!")
@@ -164,6 +177,165 @@ class GUI(ctk.CTk):
         self._connect_gui_callbacks()
         self.apply_custom_colors = self.gui.apply_custom_colors
         self.after(100, self.apply_custom_colors)
+
+    def _setup_virtual_environment(self):
+        """Create and activate virtual environment, install requirements"""
+        if getattr(sys, 'frozen', False):
+            base_path = os.path.dirname(sys.executable)
+        else:
+            base_path = os.path.dirname(os.path.abspath(__file__))
+        
+        venv_path = os.path.join(base_path, 'venv')
+        requirements_path = os.path.join(base_path, 'requirements.txt')
+        
+        print(f"📁 Base path: {base_path}")
+        print(f"📁 Virtual environment path: {venv_path}")
+        
+        in_venv = (hasattr(sys, 'real_prefix') or 
+                  (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix))
+        
+        if in_venv:
+            print("✅ Already running in a virtual environment")
+            return
+        
+        if not os.path.exists(venv_path):
+            print("🔧 Creating virtual environment...")
+            try:
+                venv.create(venv_path, with_pip=True)
+                print("✅ Virtual environment created")
+            except Exception as e:
+                print(f"❌ Failed to create virtual environment: {e}")
+                return
+        
+        if sys.platform == 'win32':
+            python_path = os.path.join(venv_path, 'Scripts', 'python.exe')
+            pip_path = os.path.join(venv_path, 'Scripts', 'pip.exe')
+        else:
+            python_path = os.path.join(venv_path, 'bin', 'python')
+            pip_path = os.path.join(venv_path, 'bin', 'pip')
+        
+        if os.path.exists(requirements_path):
+            print("📦 Checking requirements...")
+            
+            marker_path = os.path.join(venv_path, '.requirements_installed')
+            
+            needs_install = True
+            if os.path.exists(marker_path):
+                with open(marker_path, 'r') as f:
+                    last_install = f.read().strip()
+                with open(requirements_path, 'r') as f:
+                    current_reqs = f.read().strip()
+                if last_install == current_reqs:
+                    needs_install = False
+                    print("✅ Requirements already installed and up to date")
+            
+            if needs_install:
+                print("📦 Installing requirements from requirements.txt...")
+                try:
+                    subprocess.run(
+                        [python_path, '-m', 'pip', 'install', '--upgrade', 'pip'],
+                        capture_output=True,
+                        text=True,
+                        check=False
+                    )
+                    
+                    result = subprocess.run(
+                        [python_path, '-m', 'pip', 'install', '-r', requirements_path],
+                        capture_output=True,
+                        text=True,
+                        check=False
+                    )
+                    
+                    if result.returncode == 0:
+                        print("✅ Requirements installed successfully")
+                        with open(requirements_path, 'r') as f:
+                            current_reqs = f.read().strip()
+                        with open(marker_path, 'w') as f:
+                            f.write(current_reqs)
+                    else:
+                        print(f"⚠️ Some requirements may not have installed: {result.stderr}")
+                        
+                        print("📦 Installing Playwright browsers...")
+                        subprocess.run(
+                            [python_path, '-m', 'playwright', 'install', 'chromium'],
+                            capture_output=True,
+                            text=True,
+                            check=False
+                        )
+                        
+                except Exception as e:
+                    print(f"⚠️ Failed to install requirements: {e}")
+        else:
+            print("⚠️ requirements.txt not found, skipping automatic installation")
+        
+        os.environ['VIRTUAL_ENV'] = venv_path
+        
+        if sys.platform == 'win32':
+            site_packages = os.path.join(venv_path, 'Lib', 'site-packages')
+        else:
+            py_version = f"{sys.version_info.major}.{sys.version_info.minor}"
+            site_packages = os.path.join(venv_path, 'lib', f'python{py_version}', 'site-packages')
+        
+        if os.path.exists(site_packages) and site_packages not in sys.path:
+            sys.path.insert(0, site_packages)
+            print(f"✅ Added venv site-packages to Python path")
+        
+        if sys.platform != 'win32':
+            lib_path = os.path.join(venv_path, 'lib')
+            if os.path.exists(lib_path):
+                current_ld = os.environ.get('LD_LIBRARY_PATH', '')
+                os.environ['LD_LIBRARY_PATH'] = f"{lib_path}:{current_ld}"
+                print(f"✅ Set LD_LIBRARY_PATH to include venv lib")
+        
+        print("✅ Virtual environment setup complete")
+        
+        self._verify_venv_packages(python_path)
+    
+    def _verify_venv_packages(self, python_path):
+        """Verify that critical packages are installed in the venv"""
+        try:
+            result = subprocess.run(
+                [python_path, '-c', 'import playwright; print(playwright.__version__)'],
+                capture_output=True,
+                text=True,
+                check=False
+            )
+            if result.returncode == 0:
+                print(f"✅ Playwright version {result.stdout.strip()} available in venv")
+            else:
+                print("⚠️ Playwright not found in venv, installing...")
+                subprocess.run(
+                    [python_path, '-m', 'pip', 'install', 'playwright'],
+                    capture_output=True,
+                    text=True,
+                    check=False
+                )
+                subprocess.run(
+                    [python_path, '-m', 'playwright', 'install', 'chromium'],
+                    capture_output=True,
+                    text=True,
+                    check=False
+                )
+        except Exception as e:
+            print(f"⚠️ Package verification failed: {e}")
+    
+    def restart_in_venv(self):
+        """Restart the application within the virtual environment"""
+        if getattr(sys, 'frozen', False):
+            print("⚠️ Cannot restart in venv when running as executable")
+            return
+        
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        venv_path = os.path.join(base_path, 'venv')
+        
+        if sys.platform == 'win32':
+            python_path = os.path.join(venv_path, 'Scripts', 'python.exe')
+        else:
+            python_path = os.path.join(venv_path, 'bin', 'python')
+        
+        if os.path.exists(python_path):
+            print("🔄 Restarting in virtual environment...")
+            os.execv(python_path, [python_path] + sys.argv)
 
     def _handle_website_selection(self, selected_website):
         """Handle website selection"""
