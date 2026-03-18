@@ -76,20 +76,87 @@ def pyinstaller_cmd(name, entry_script, console=True, extra_data=None):
     if extra_data:
         for src,dest in extra_data:
             cmd.extend(["--add-data", f"{src}{os.pathsep}{dest}"])
-    cmd.extend([
-        "--hidden-import","pygame",
-        "--hidden-import","PIL",
-        "--hidden-import","PIL._tkinter_finder",
-        "--hidden-import","customtkinter",
-        "--collect-all","customtkinter",
-        "--collect-all","pygame",
-        "--collect-all","playwright",
-        entry_script
-    ])
+    
+    hidden_imports = get_scraper_modules() + [
+        "scrapers.all_store_bg_scraper",
+        "scrapers.amazon_co_uk_scraper",
+        "scrapers.amazon_com_scraper",
+        "scrapers.amazon_de_scraper",
+        "scrapers.ardes_scraper",
+        "scrapers.base_scraper",
+        "scrapers.cpu_memory_manager",
+        "scrapers.cyber_trade_scraper",
+        "scrapers.desktop_bg_scraper",
+        "scrapers.ezona_bg_scraper",
+        "scrapers.gt_computers",
+        "scrapers.hits_bg_scraper",
+        "scrapers.jar_computers_scraper",
+        "scrapers.optimal_computers_scraper",
+        "scrapers.pc_tech_scraper",
+        "scrapers.pic_bg_scraper",
+        "scrapers.plasico_scraper",
+        "scrapers.pro_bg_scraper",
+        "scrapers.scraper_container_class",
+        "scrapers.scraper_utils",
+        "scrapers.senetic_scraper",
+        "scrapers.techno_mall_scraper",
+        "scrapers.tehnik_store_scraper",
+        "scrapers.thnx_bg_scraper",
+        "scrapers.tova_bg_scraper",
+        "scrapers.xtreme_bg_scraper",
+        
+        "playwright",
+        "playwright.async_api",
+        "playwright.sync_api",
+        "playwright._impl._driver",
+        "playwright._impl._connection",
+        "playwright._impl._page",
+        "playwright._impl._browser",
+        "playwright._impl._browser_context",
+        
+        "customtkinter",
+        "PIL",
+        "PIL._tkinter_finder",
+        "pygame",
+        "yfinance",
+        "pillow",
+        "pyinstaller",
+        "python-dotenv",
+        "requests",
+        "scipy",
+        "selenium",
+        "urllib3",
+        "xlsxwriter",
+        "currency_converter",
+        "matplotlib",
+        "aiohttp",
+        "pandas",
+        "numpy",
+        "dotenv",
+    ]
+
+    for imp in hidden_imports:
+        cmd.extend(['--hidden-import', imp])
+
+    collect_all = ["customtkinter", "pygame", "playwright", "scrapers", "PIL", "matplotlib"]
+    for pkg in collect_all:
+        cmd.extend(["--collect-all", pkg])
+
     icon = "images/scraper-icon.ico" if platform.system()=="Windows" else "images/scraper-icon.jpeg"
     if os.path.exists(icon):
         cmd.extend(["--icon",icon])
     return cmd
+
+def get_scraper_modules():
+    """Automatically discover all scraper modules"""
+    scrapers = []
+    scrapers_dir = 'scrapers'
+    if os.path.exists(scrapers_dir):
+        for file in os.listdir(scrapers_dir):
+            if file.endswith('.py') and not file.startswith('__'):
+                module_name = f"scrapers.{file[:-3]}"
+                scrapers.append(module_name)
+    return scrapers
 
 def build_windows(console=False):
     find_and_bundle_playwright_browsers()

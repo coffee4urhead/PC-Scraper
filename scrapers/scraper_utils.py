@@ -187,7 +187,7 @@ def _ensure_playwright_browsers(self):
             try:
                 response = input("\nInstall now? (y/n): ").lower().strip()
             except:
-                response = self._show_installation_dialog()
+                response = _show_installation_dialog()
             
             if response == 'y':
                 print("\n📦 Installing Playwright and browsers...")
@@ -233,7 +233,7 @@ def _ensure_playwright_browsers(self):
                                                     print(f"    ✅ Made executable: {os.path.join(froot, file)}")
                         
                         print("\n✅ Installation complete!")
-                        return self._ensure_playwright_browsers()
+                        return _ensure_playwright_browsers()
                     else:
                         print(f"❌ Installation failed: {result.stderr}")
                         return False
@@ -284,7 +284,7 @@ def _ensure_playwright_browsers(self):
         print(f"❌ Unexpected error in browser check: {e}")
         return False
 
-def _show_installation_dialog(self):
+def _show_installation_dialog():
     """Fallback GUI dialog for when console input isn't available"""
     try:
         import tkinter as tk
