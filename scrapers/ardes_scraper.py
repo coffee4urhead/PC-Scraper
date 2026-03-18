@@ -69,7 +69,6 @@ class ArdesScraper(AsyncPlaywrightBaseScraper):
                 await page.goto(page_url, wait_until=wait_strategy, timeout=30000)
                 print(f"DEBUG: Page loaded successfully: {page_url} (wait_until: {wait_strategy})")
             
-                # Wait for product grid
                 selectors_to_try = [
                     'div.products-grid',
                     '.search-results', 
@@ -100,18 +99,14 @@ class ArdesScraper(AsyncPlaywrightBaseScraper):
                         print(f"DEBUG: Screenshot saved to {screenshot_path}")
                         return []
         
-                # Get ALL product elements
                 product_elements = await page.query_selector_all('div.product')
                 print(f"DEBUG: Found {len(product_elements)} product elements")
             
-                # DEBUG: Let's see what selectors are available on the first product
                 if product_elements:
                     first_product = product_elements[0]
-                    # Try to get all text content to see what's available
                     all_text = await first_product.inner_text()
                     print(f"DEBUG: First product full text: {all_text}")
-                
-                    # Try different selectors to find the full title
+
                     test_selectors = [
                         'span.ellip-line',
                         '.product-title',
@@ -132,13 +127,11 @@ class ArdesScraper(AsyncPlaywrightBaseScraper):
                 product_links = []
                 skipped_count = 0
             
-                # Process each product element individually
                 for product in product_elements:
                     try:
-                        # Try multiple selectors to get the FULL title
                         title_text = ""
                         title_selectors = [
-                            'div.product-head a',  # This might contain the full title
+                            'div.product-head a',  
                             'span.ellip-line',
                             '.product-title',
                             '.name',
@@ -151,11 +144,10 @@ class ArdesScraper(AsyncPlaywrightBaseScraper):
                             title_element = await product.query_selector(selector)
                             if title_element:
                                 text = await title_element.inner_text()
-                                if text and len(text.strip()) > 5:  # More than just "(2.9GHz)"
+                                if text and len(text.strip()) > 5:  
                                     title_text = text.strip()
                                     break
                     
-                        # If we still have a short title, get the full link text
                         if not title_text or len(title_text) < 10:
                             link_element = await product.query_selector('a[href]')
                             if link_element:
@@ -164,15 +156,13 @@ class ArdesScraper(AsyncPlaywrightBaseScraper):
                     
                         print(f"DEBUG: Extracted title: {title_text}")
                     
-                        # Check if product should be filtered by keywords
                         if title_text:
                             temp_product_data = {'title': title_text, 'description': ''}
                             if self._should_filter_by_keywords(temp_product_data):
                                 print(f'Skipped product "{title_text}" because it matches exclusion keywords')
                                 skipped_count += 1
-                                continue  # Skip to next product
+                                continue  
                     
-                        # Get link
                         link_element = await product.query_selector('div.product-head > a[href]')
                         if not link_element:
                             link_element = await product.query_selector('a[href]')
@@ -254,8 +244,8 @@ class ArdesScraper(AsyncPlaywrightBaseScraper):
                     except ValueError:
                         print(f"DEBUG: Could not parse price to float: {price_text}")
                         price = 0.0
-                    else:
-                        print("DEBUG: Price element not found")
+                else:
+                    print("DEBUG: Price element not found")
                 
                 target_currency = self.settings_manager.get('preferred_currency', "BGN")
                 converted_price = float(self._convert_prices_only(price, self.website_currency, target_currency))

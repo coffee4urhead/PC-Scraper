@@ -25,7 +25,7 @@ class AsyncPlaywrightBaseScraper(ABC):
         self.settings_manager = SettingsManager()
 
         self.products_collected = 0
-        self.total_expected_products = 0 
+        self.total_expected_products = 0
     
         self.products_found_per_page = {}
         self.expected_products_per_page = {}
@@ -33,8 +33,8 @@ class AsyncPlaywrightBaseScraper(ABC):
         self.max_concurrent_products = 3
         
         self._request_times = Deque()
-        self.max_requests_per_minute = 30  
-        self.min_delay_between_requests = 1.5 
+        self.max_requests_per_minute = 30
+        self.min_delay_between_requests = 1.5
         
         raw_min = self.settings_manager.get('min_price', 0)
         raw_max = self.settings_manager.get('max_price', 0)
@@ -569,7 +569,7 @@ class AsyncPlaywrightBaseScraper(ABC):
                 return None
 
             product_data['url'] = product_url
-
+        
             if product_data:
                 self.products_collected += 1
                 self._update_gui({"type": "product", 'data': product_data})
